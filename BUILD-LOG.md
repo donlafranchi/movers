@@ -14,7 +14,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | Ticket | Title | Status |
 |--------|-------|--------|
 | T001 | Project Initialization | ✅ Complete |
-| T002 | Database Schema + Supabase Setup | Open |
+| T002 | Database Schema + Supabase Setup | ✅ Complete |
 | T003 | Authentication | Open |
 | T004 | Map View with Colored Pins | Open |
 | T005 | Pin Clustering | Open |
@@ -27,6 +27,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 
 ## Latest Commits
 
+- T002: Database schema and types
 - T001: Project initialization
 
 ## Blockers
