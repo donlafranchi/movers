@@ -11,17 +11,23 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 
 ## Progress
 
-| Feature | T1 | T2 | T3 | % Complete |
-|---------|----|----|----| ------------|
-| F001 Map View | ⏳ | — | — | 0% |
-| F002 Business Detail | ⏳ | — | — | 0% |
-| F003 Business Registration | ⏳ | — | — | 0% |
-| F004 Shareable Listings | ⏳ | — | — | 0% |
-| F005 Visit Interaction | ⏳ | — | — | 0% |
+| Ticket | Title | Status |
+|--------|-------|--------|
+| T001 | Project Initialization | ✅ Complete |
+| T002 | Database Schema + Supabase Setup | Open |
+| T003 | Authentication | Open |
+| T004 | Map View with Colored Pins | Open |
+| T005 | Pin Clustering | Open |
+| T006 | Map Search | Open |
+| T007 | Business Detail Card | Open |
+| T008 | Business Registration | Open |
+| T009 | Shareable Listing | Open |
+| T010 | Support Button | Open |
+| T011 | Report a Concern | Open |
 
 ## Latest Commits
 
-(Will update as development proceeds)
+- T001: Project initialization
 
 ## Blockers
 
@@ -29,4 +35,4 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 
 ## Notes
 
-Project scaffolded. Awaiting scenario writing and approval.
+Next.js 16 + Tailwind v4 + Supabase + Mapbox GL JS. All scripts verified (dev, build, test, eval). 83 Playwright eval tests ready.
