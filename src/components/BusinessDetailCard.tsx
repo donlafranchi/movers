@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { OwnershipBadge } from './OwnershipBadge'
 import { SupportButton } from './SupportButton'
+import { ReportForm } from './ReportForm'
 import { Toast } from './Toast'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
@@ -19,6 +20,7 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
   const { user } = useAuth()
   const [storyExpanded, setStoryExpanded] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const handleShare = useCallback(() => {
     const url = `${window.location.origin}/business/${business.slug}`
@@ -114,6 +116,7 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
         {user ? (
           <button
             data-testid="report-concern-button"
+            onClick={() => setReportOpen(true)}
             className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
           >
             Report a Concern
@@ -141,6 +144,14 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
         visible={toastVisible}
         onHide={() => setToastVisible(false)}
       />
+
+      {reportOpen && user && (
+        <ReportForm
+          businessId={business.id}
+          userId={user.id}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   )
 }

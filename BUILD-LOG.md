@@ -23,10 +23,11 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T008 | Business Registration | ✅ Complete |
 | T009 | Shareable Listing | ✅ Complete |
 | T010 | Support Button | ✅ Complete |
-| T011 | Report a Concern | Open |
+| T011 | Report a Concern | ✅ Complete |
 
 ## Latest Commits
 
+- T011: Report a concern form
 - T010: Support button (heart toggle)
 - T009: Shareable listing page with OG metadata
 - T008: Business registration form

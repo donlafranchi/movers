@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { OwnershipBadge } from '@/components/OwnershipBadge'
 import { SupportButton } from '@/components/SupportButton'
+import { ReportForm } from '@/components/ReportForm'
 import { Toast } from '@/components/Toast'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
@@ -24,6 +25,7 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
   const { user } = useAuth()
   const [storyExpanded, setStoryExpanded] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const hasStory = business.story && business.story.trim().length > 0
   const storyIsLong = hasStory && business.story!.length > STORY_TRUNCATE_LENGTH
@@ -119,6 +121,7 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
           {user ? (
             <button
               data-testid="report-concern-button"
+              onClick={() => setReportOpen(true)}
               className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
             >
               Report a Concern
@@ -153,6 +156,14 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
         visible={toastVisible}
         onHide={() => setToastVisible(false)}
       />
+
+      {reportOpen && user && (
+        <ReportForm
+          businessId={business.id}
+          userId={user.id}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   )
 }
