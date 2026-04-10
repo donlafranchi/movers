@@ -18,19 +18,24 @@ export function useMapBusinesses() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
 
-  const fetchBusinesses = useCallback(async (bounds: Bounds) => {
+  const fetchBusinesses = useCallback(async (bounds: Bounds, category?: string) => {
     if (timerRef.current) clearTimeout(timerRef.current)
 
     timerRef.current = setTimeout(async () => {
       setLoading(true)
-      const { data, error } = await supabase
+      let query = supabase
         .from('businesses')
         .select('*')
         .gte('latitude', bounds.south)
         .lte('latitude', bounds.north)
         .gte('longitude', bounds.west)
         .lte('longitude', bounds.east)
-        .limit(500)
+
+      if (category) {
+        query = query.ilike('category', `%${category}%`)
+      }
+
+      const { data, error } = await query.limit(500)
 
       if (!error && data) {
         setBusinesses(data as Business[])

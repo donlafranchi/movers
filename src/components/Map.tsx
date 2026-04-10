@@ -5,6 +5,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MAP_DEFAULTS, PIN_COLORS, CLUSTER_CONFIG } from '@/lib/map-config'
 import { useMapBusinesses, type Bounds } from '@/hooks/useMapBusinesses'
+import { SearchBar } from './SearchBar'
 import type { Business, OwnershipTier } from '@/lib/types'
 
 const SOURCE_ID = 'businesses'
@@ -35,6 +36,9 @@ export function Map() {
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({})
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [noResultsQuery, setNoResultsQuery] = useState<string | null>(null)
+  const categoryFilterRef = useRef<string | null>(null)
   const { businesses, fetchBusinesses } = useMapBusinesses()
 
   const getBounds = useCallback((): Bounds | null => {
@@ -49,6 +53,11 @@ export function Map() {
       west: b.getWest(),
     }
   }, [])
+
+  const refreshPins = useCallback(() => {
+    const bounds = getBounds()
+    if (bounds) fetchBusinesses(bounds, categoryFilterRef.current || undefined)
+  }, [getBounds, fetchBusinesses])
 
   // Initialize map
   useEffect(() => {
@@ -66,7 +75,6 @@ export function Map() {
     mapRef.current = map
 
     map.on('load', () => {
-      // Add clustered GeoJSON source
       map.addSource(SOURCE_ID, {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -75,7 +83,6 @@ export function Map() {
         clusterRadius: CLUSTER_CONFIG.clusterRadius,
       })
 
-      // Invisible layers for querying — rendering is done via HTML markers
       map.addLayer({
         id: 'clusters',
         type: 'circle',
@@ -98,10 +105,9 @@ export function Map() {
 
     map.on('moveend', () => {
       const bounds = getBounds()
-      if (bounds) fetchBusinesses(bounds)
+      if (bounds) fetchBusinesses(bounds, categoryFilterRef.current || undefined)
     })
 
-    // Re-render markers when the map finishes rendering (zoom, move, source data update)
     map.on('render', () => {
       if (!map.isSourceLoaded(SOURCE_ID)) return
       updateMarkers(map)
@@ -203,7 +209,6 @@ export function Map() {
       }
     }
 
-    // Remove markers that are no longer in view
     for (const key of Object.keys(markersRef.current)) {
       if (!newMarkerIds.has(key)) {
         markersRef.current[key].remove()
@@ -220,7 +225,6 @@ export function Map() {
     const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined
     if (!source) return
 
-    // Clear existing markers so they get recreated with fresh data
     for (const key of Object.keys(markersRef.current)) {
       markersRef.current[key].remove()
       delete markersRef.current[key]
@@ -229,13 +233,62 @@ export function Map() {
     source.setData(businessesToGeoJSON(businesses))
   }, [businesses])
 
+  // Search callbacks
+  const handleCategorySelect = useCallback((category: string) => {
+    setCategoryFilter(category)
+    categoryFilterRef.current = category
+    setNoResultsQuery(null)
+    refreshPins()
+  }, [refreshPins])
+
+  const handleLocationSelect = useCallback((coordinates: [number, number]) => {
+    setNoResultsQuery(null)
+    mapRef.current?.flyTo({ center: coordinates, zoom: MAP_DEFAULTS.geolocatedZoom })
+  }, [])
+
+  const handleCombinedSelect = useCallback((category: string, coordinates: [number, number]) => {
+    setCategoryFilter(category)
+    categoryFilterRef.current = category
+    setNoResultsQuery(null)
+    mapRef.current?.flyTo({ center: coordinates, zoom: MAP_DEFAULTS.geolocatedZoom })
+  }, [])
+
+  const handleSearchClear = useCallback(() => {
+    setCategoryFilter(null)
+    categoryFilterRef.current = null
+    setNoResultsQuery(null)
+    refreshPins()
+  }, [refreshPins])
+
+  const handleNoResults = useCallback((query: string) => {
+    setNoResultsQuery(query)
+  }, [])
+
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} data-testid="map" className="h-full w-full" />
+
+      <SearchBar
+        onCategorySelect={handleCategorySelect}
+        onLocationSelect={handleLocationSelect}
+        onCombinedSelect={handleCombinedSelect}
+        onClear={handleSearchClear}
+        onNoResults={handleNoResults}
+      />
+
+      {noResultsQuery && (
+        <div
+          data-testid="search-no-results"
+          className="absolute bottom-24 left-4 right-4 z-20 bg-white dark:bg-zinc-900 rounded-xl shadow-lg px-4 py-3 text-sm text-center text-zinc-600 dark:text-zinc-400"
+        >
+          No &ldquo;{noResultsQuery}&rdquo; businesses found in this area
+        </div>
+      )}
+
       {selectedBusiness && (
         <div
           data-testid="business-detail-card"
-          className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-2xl shadow-lg p-4 z-10"
+          className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-2xl shadow-lg p-4 z-30"
         >
           <button
             onClick={() => setSelectedBusiness(null)}

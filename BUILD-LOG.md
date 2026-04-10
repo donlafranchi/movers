@@ -18,7 +18,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T003 | Authentication | ✅ Complete |
 | T004 | Map View with Colored Pins | ✅ Complete |
 | T005 | Pin Clustering | ✅ Complete |
-| T006 | Map Search | Open |
+| T006 | Map Search | ✅ Complete |
 | T007 | Business Detail Card | Open |
 | T008 | Business Registration | Open |
 | T009 | Shareable Listing | Open |
@@ -27,6 +27,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 
 ## Latest Commits
 
+- T006: Map search by category and location
 - T005: Pin clustering at low zoom levels
 - T004: Map view with colored ownership pins
 - T003: Authentication (sign-up, login, sign-out, middleware)
