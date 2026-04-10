@@ -6,6 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { MAP_DEFAULTS, PIN_COLORS, CLUSTER_CONFIG } from '@/lib/map-config'
 import { useMapBusinesses, type Bounds } from '@/hooks/useMapBusinesses'
 import { SearchBar } from './SearchBar'
+import { BusinessDetailCard } from './BusinessDetailCard'
 import type { Business, OwnershipTier } from '@/lib/types'
 
 const SOURCE_ID = 'businesses'
@@ -286,25 +287,10 @@ export function Map() {
       )}
 
       {selectedBusiness && (
-        <div
-          data-testid="business-detail-card"
-          className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-2xl shadow-lg p-4 z-30"
-        >
-          <button
-            onClick={() => setSelectedBusiness(null)}
-            className="absolute top-2 right-3 text-zinc-400 text-xl"
-            aria-label="Close"
-          >
-            ×
-          </button>
-          <h2 className="text-lg font-bold">{selectedBusiness.name}</h2>
-          <p className="text-sm text-zinc-500 capitalize">
-            {PIN_COLORS[selectedBusiness.ownership_tier]?.name} — {selectedBusiness.ownership_tier.replace('-', ' ')}
-          </p>
-          <p className="text-sm mt-1">
-            {selectedBusiness.street_address}, {selectedBusiness.city}, {selectedBusiness.state}
-          </p>
-        </div>
+        <BusinessDetailCard
+          business={selectedBusiness}
+          onClose={() => setSelectedBusiness(null)}
+        />
       )}
     </div>
   )
