@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { OwnershipBadge } from './OwnershipBadge'
+import { Toast } from './Toast'
 import { useSupportCount } from '@/hooks/useSupportCount'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
@@ -18,6 +19,13 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
   const { user } = useAuth()
   const { count: supportCount } = useSupportCount(business.id)
   const [storyExpanded, setStoryExpanded] = useState(false)
+  const [toastVisible, setToastVisible] = useState(false)
+
+  const handleShare = useCallback(() => {
+    const url = `${window.location.origin}/business/${business.slug}`
+    navigator.clipboard?.writeText(url)
+    setToastVisible(true)
+  }, [business.slug])
 
   const hasStory = business.story && business.story.trim().length > 0
   const storyIsLong = hasStory && business.story!.length > STORY_TRUNCATE_LENGTH
@@ -131,15 +139,18 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
         )}
         <button
           data-testid="share-button"
-          onClick={() => {
-            const url = `${window.location.origin}/business/${business.slug}`
-            navigator.clipboard?.writeText(url)
-          }}
+          onClick={handleShare}
           className="rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-4 py-2 text-sm font-medium"
         >
           Share
         </button>
       </div>
+
+      <Toast
+        message="Link copied to clipboard"
+        visible={toastVisible}
+        onHide={() => setToastVisible(false)}
+      />
     </div>
   )
 }

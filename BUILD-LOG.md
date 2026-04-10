@@ -21,12 +21,13 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T006 | Map Search | ✅ Complete |
 | T007 | Business Detail Card | ✅ Complete |
 | T008 | Business Registration | ✅ Complete |
-| T009 | Shareable Listing | Open |
+| T009 | Shareable Listing | ✅ Complete |
 | T010 | Support Button | Open |
 | T011 | Report a Concern | Open |
 
 ## Latest Commits
 
+- T009: Shareable listing page with OG metadata
 - T008: Business registration form
 - T007: Business detail card with ownership badge
 - T006: Map search by category and location
