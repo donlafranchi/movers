@@ -20,13 +20,14 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T005 | Pin Clustering | ✅ Complete |
 | T006 | Map Search | ✅ Complete |
 | T007 | Business Detail Card | ✅ Complete |
-| T008 | Business Registration | Open |
+| T008 | Business Registration | ✅ Complete |
 | T009 | Shareable Listing | Open |
 | T010 | Support Button | Open |
 | T011 | Report a Concern | Open |
 
 ## Latest Commits
 
+- T008: Business registration form
 - T007: Business detail card with ownership badge
 - T006: Map search by category and location
 - T005: Pin clustering at low zoom levels

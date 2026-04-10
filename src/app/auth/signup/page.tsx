@@ -35,7 +35,7 @@ export default function SignUpPage() {
       return
     }
 
-    router.push('/register')
+    router.push('/register-business')
   }
 
   return (
