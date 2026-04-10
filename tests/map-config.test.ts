@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { MAP_DEFAULTS, PIN_COLORS } from '@/lib/map-config'
+import { MAP_DEFAULTS, PIN_COLORS, CLUSTER_CONFIG } from '@/lib/map-config'
 import type { OwnershipTier } from '@/lib/types'
 
 describe('MAP_DEFAULTS', () => {
@@ -17,6 +17,16 @@ describe('MAP_DEFAULTS', () => {
 
   it('has a debounce value', () => {
     expect(MAP_DEFAULTS.debounceMs).toBe(300)
+  })
+})
+
+describe('CLUSTER_CONFIG', () => {
+  it('has clusterMaxZoom', () => {
+    expect(CLUSTER_CONFIG.clusterMaxZoom).toBe(14)
+  })
+
+  it('has clusterRadius', () => {
+    expect(CLUSTER_CONFIG.clusterRadius).toBe(50)
   })
 })
 

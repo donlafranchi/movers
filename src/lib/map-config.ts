@@ -8,6 +8,11 @@ export const MAP_DEFAULTS = {
   debounceMs: 300,
 }
 
+export const CLUSTER_CONFIG = {
+  clusterMaxZoom: 14,
+  clusterRadius: 50,
+}
+
 export const PIN_COLORS: Record<OwnershipTier, { hex: string; name: string }> = {
   independent: { hex: '#D4A017', name: 'gold' },
   coop: { hex: '#1B7A3D', name: 'green' },

@@ -17,7 +17,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T002 | Database Schema + Supabase Setup | ✅ Complete |
 | T003 | Authentication | ✅ Complete |
 | T004 | Map View with Colored Pins | ✅ Complete |
-| T005 | Pin Clustering | Open |
+| T005 | Pin Clustering | ✅ Complete |
 | T006 | Map Search | Open |
 | T007 | Business Detail Card | Open |
 | T008 | Business Registration | Open |
@@ -27,6 +27,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 
 ## Latest Commits
 
+- T005: Pin clustering at low zoom levels
 - T004: Map view with colored ownership pins
 - T003: Authentication (sign-up, login, sign-out, middleware)
 - T002: Database schema and types
