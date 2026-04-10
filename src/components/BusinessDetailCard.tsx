@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { OwnershipBadge } from './OwnershipBadge'
+import { SupportButton } from './SupportButton'
 import { Toast } from './Toast'
-import { useSupportCount } from '@/hooks/useSupportCount'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
 
@@ -17,7 +17,6 @@ interface BusinessDetailCardProps {
 
 export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProps) {
   const { user } = useAuth()
-  const { count: supportCount } = useSupportCount(business.id)
   const [storyExpanded, setStoryExpanded] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
 
@@ -97,45 +96,36 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
         </div>
       )}
 
-      <div className="flex items-center gap-4 mt-4">
-        <span data-testid="support-count" className="text-sm text-zinc-500">
-          {supportCount} {supportCount === 1 ? 'supporter' : 'supporters'}
-        </span>
+      <div className="mt-4">
+        {user ? (
+          <SupportButton businessId={business.id} userId={user.id} />
+        ) : (
+          <Link
+            href="/auth/login"
+            data-testid="sign-in-to-support"
+            className="inline-block text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 px-4 text-sm"
+          >
+            Sign in to support
+          </Link>
+        )}
       </div>
 
       <div className="flex gap-2 mt-3">
         {user ? (
-          <>
-            <button
-              data-testid="support-button"
-              className="flex-1 rounded-full bg-red-50 text-red-600 py-2 text-sm font-medium"
-            >
-              ❤️ Support
-            </button>
-            <button
-              data-testid="report-concern-button"
-              className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
-            >
-              Report a Concern
-            </button>
-          </>
+          <button
+            data-testid="report-concern-button"
+            className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
+          >
+            Report a Concern
+          </button>
         ) : (
-          <>
-            <Link
-              href="/auth/login"
-              data-testid="sign-in-to-support"
-              className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
-            >
-              Sign in to support
-            </Link>
-            <Link
-              href="/auth/login"
-              data-testid="sign-in-to-report"
-              className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
-            >
-              Sign in to report
-            </Link>
-          </>
+          <Link
+            href="/auth/login"
+            data-testid="sign-in-to-report"
+            className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
+          >
+            Sign in to report
+          </Link>
         )}
         <button
           data-testid="share-button"

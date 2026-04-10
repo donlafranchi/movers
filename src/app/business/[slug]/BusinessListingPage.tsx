@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { OwnershipBadge } from '@/components/OwnershipBadge'
+import { SupportButton } from '@/components/SupportButton'
 import { Toast } from '@/components/Toast'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
@@ -17,10 +18,9 @@ const STORY_TRUNCATE_LENGTH = 300
 
 interface BusinessListingPageProps {
   business: Business
-  supportCount: number
 }
 
-export function BusinessListingPage({ business, supportCount }: BusinessListingPageProps) {
+export function BusinessListingPage({ business }: BusinessListingPageProps) {
   const { user } = useAuth()
   const [storyExpanded, setStoryExpanded] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
@@ -92,9 +92,17 @@ export function BusinessListingPage({ business, supportCount }: BusinessListingP
         )}
 
         <div className="mt-4">
-          <span data-testid="support-count" className="text-sm text-zinc-500">
-            {supportCount} {supportCount === 1 ? 'supporter' : 'supporters'}
-          </span>
+          {user ? (
+            <SupportButton businessId={business.id} userId={user.id} />
+          ) : (
+            <Link
+              href="/auth/login"
+              data-testid="sign-in-to-support"
+              className="inline-block text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 px-4 text-sm"
+            >
+              Sign in to support
+            </Link>
+          )}
         </div>
 
         {business.latitude != null && business.longitude != null && (
@@ -109,37 +117,20 @@ export function BusinessListingPage({ business, supportCount }: BusinessListingP
 
         <div className="flex gap-2 mt-4">
           {user ? (
-            <>
-              <button
-                data-testid="support-button"
-                className="flex-1 rounded-full bg-red-50 text-red-600 py-2 text-sm font-medium"
-              >
-                ❤️ Support
-              </button>
-              <button
-                data-testid="report-concern-button"
-                className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
-              >
-                Report a Concern
-              </button>
-            </>
+            <button
+              data-testid="report-concern-button"
+              className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
+            >
+              Report a Concern
+            </button>
           ) : (
-            <>
-              <Link
-                href="/auth/login"
-                data-testid="sign-in-to-support"
-                className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
-              >
-                Sign in to support
-              </Link>
-              <Link
-                href="/auth/login"
-                data-testid="sign-in-to-report"
-                className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
-              >
-                Sign in to report
-              </Link>
-            </>
+            <Link
+              href="/auth/login"
+              data-testid="sign-in-to-report"
+              className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
+            >
+              Sign in to report
+            </Link>
           )}
           <button
             data-testid="share-button"

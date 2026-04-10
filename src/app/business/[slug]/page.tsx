@@ -20,16 +20,6 @@ async function getBusiness(slug: string): Promise<Business | null> {
   return data as Business | null
 }
 
-async function getSupportCount(businessId: string): Promise<number> {
-  const supabase = await createClient()
-  const { count } = await supabase
-    .from('supports')
-    .select('id', { count: 'exact', head: true })
-    .eq('business_id', businessId)
-
-  return count ?? 0
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const business = await getBusiness(slug)
@@ -65,7 +55,5 @@ export default async function BusinessPage({ params }: Props) {
 
   if (!business) notFound()
 
-  const supportCount = await getSupportCount(business.id)
-
-  return <BusinessListingPage business={business} supportCount={supportCount} />
+  return <BusinessListingPage business={business} />
 }
