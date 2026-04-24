@@ -28,7 +28,72 @@ export interface Business {
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
+  is_featured?: boolean
+  featured_at?: string | null
+  tagline?: string | null
+  cover_photo_url?: string | null
+  website_url?: string | null
+  instagram_handle?: string | null
+  contact_email?: string | null
 }
+
+export type Vendor = Business
+
+export type WeekdaySlug = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+
+export interface Market {
+  id: string
+  name: string
+  slug: string
+  city: string
+  state: string
+  latitude: number
+  longitude: number
+  schedule_days: WeekdaySlug[]
+  schedule_start_time: string | null
+  schedule_end_time: string | null
+  description: string | null
+  created_at: string
+}
+
+export interface MarketVendor {
+  id: string
+  market_id: string
+  vendor_id: string
+  created_at: string
+}
+
+export interface VendorCategory {
+  id: string
+  vendor_id: string
+  category_slug: string
+  is_primary: boolean
+  created_at: string
+}
+
+export interface Follow {
+  id: string
+  user_id: string
+  vendor_id: string
+  created_at: string
+}
+
+export interface UserPreferences {
+  user_id: string
+  selected_market_id: string | null
+  follow_emails_enabled: boolean
+  updated_at: string
+}
+
+export const WEEKDAYS: { slug: WeekdaySlug; short: string; long: string; index: number }[] = [
+  { slug: 'sun', short: 'Sun', long: 'Sunday', index: 0 },
+  { slug: 'mon', short: 'Mon', long: 'Monday', index: 1 },
+  { slug: 'tue', short: 'Tue', long: 'Tuesday', index: 2 },
+  { slug: 'wed', short: 'Wed', long: 'Wednesday', index: 3 },
+  { slug: 'thu', short: 'Thu', long: 'Thursday', index: 4 },
+  { slug: 'fri', short: 'Fri', long: 'Friday', index: 5 },
+  { slug: 'sat', short: 'Sat', long: 'Saturday', index: 6 },
+]
 
 export interface Support {
   id: string

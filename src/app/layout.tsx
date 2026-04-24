@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
+import { BottomNav, TopNavDesktop } from "@/components/BottomNav"
+import { MarketProvider } from "@/components/MarketContext"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Main Street Market",
-  description: "Find independently owned local businesses. See who owns what. Vote with your wallet.",
+  description: "Follow the makers you meet at your local farmers market. Every dollar you spend here stays here.",
 }
 
 export default function RootLayout({
@@ -27,7 +29,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <MarketProvider>
+          <TopNavDesktop />
+          {children}
+          <BottomNav />
+        </MarketProvider>
+      </body>
     </html>
   )
 }

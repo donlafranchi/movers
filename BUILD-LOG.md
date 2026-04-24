@@ -24,8 +24,18 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T009 | Shareable Listing | ✅ Complete |
 | T010 | Support Button | ✅ Complete |
 | T011 | Report a Concern | ✅ Complete |
+| T012 | Market Schema + Seed Data | ✅ Complete |
+| T013 | Bottom Navigation Shell | ✅ Complete |
+| T014 | Home Feed (Etsy-style) | ✅ Complete |
+| T015 | Explore — Search + List/Map | ✅ Complete |
+| T016 | Market Selection Modal | ✅ Complete |
+| T017 | Vendor Profile Update | ✅ Complete |
+| T018 | Follow Vendor + Notifications | ✅ Complete |
 
 ## Latest Commits
+
+- T012-T018: Etsy-style feed pivot — schema, bottom nav, home feed, explore, market modal, vendor profile, follow + notifications
+
 
 - T011: Report a concern form
 - T010: Support button (heart toggle)
