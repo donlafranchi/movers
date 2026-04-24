@@ -17,7 +17,7 @@ const ExploreMap = dynamic(() => import('./ExploreMap').then((m) => m.ExploreMap
 function supabase() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   )
 }
 
@@ -127,9 +127,135 @@ export function ExplorePage() {
   const anyFilter = !!(query || categoryFilter || marketSlugFilter || dayFilter)
 
   return (
-    <main className="pb-24" data-testid="explore-page">
-      <header className="sticky top-0 z-30 bg-white border-b border-neutral-200 md:hidden">
-        <div className="p-3">
+    <main className="pb-64 md:pb-24" data-testid="explore-page">
+      {/* Desktop top header */}
+      <header className="hidden md:block sticky top-14 z-20 bg-white border-b border-neutral-200">
+        <div className="max-w-5xl mx-auto p-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="search"
+              placeholder="Search vendors, products, markets"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              data-testid="search-input-desktop"
+              className="w-full pl-9 pr-9 py-2.5 text-sm border border-neutral-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            />
+          </div>
+          <div className="mt-3 flex gap-2 items-center">
+            <MarketPill />
+            <FilterChip
+              label={categoryFilter ? CATEGORIES[categoryFilter as CategorySlug]?.label ?? 'Category' : 'Category'}
+              active={!!categoryFilter}
+              onClear={categoryFilter ? () => setCategoryFilter(null) : undefined}
+              menuItems={CATEGORY_ORDER.map((slug) => ({
+                label: `${CATEGORIES[slug].emoji} ${CATEGORIES[slug].label}`,
+                onSelect: () => setCategoryFilter(slug),
+                selected: categoryFilter === slug,
+              }))}
+            />
+            <FilterChip
+              label={dayFilter ? WEEKDAYS.find((w) => w.slug === dayFilter)?.short ?? 'Day' : 'Day'}
+              active={!!dayFilter}
+              onClear={dayFilter ? () => setDayFilter(null) : undefined}
+              menuItems={WEEKDAYS.map((w) => ({
+                label: w.long,
+                onSelect: () => setDayFilter(w.slug),
+                selected: dayFilter === w.slug,
+              }))}
+            />
+            <div className="ml-auto flex gap-1">
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md ${
+                  view === 'list' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+                }`}
+              >
+                <List size={14} /> List
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('map')}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md ${
+                  view === 'map' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+                }`}
+              >
+                <MapIcon size={14} /> Map
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile bottom-anchored controls — order from bottom up: nav, search, filters, view toggle */}
+      <div
+        className="fixed inset-x-0 z-40 md:hidden bg-white/95 backdrop-blur border-t border-neutral-200"
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+        data-testid="bottom-controls"
+      >
+        {/* View toggle row (top of stack) */}
+        <div className="px-3 pt-2 pb-1 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            data-active={view === 'list'}
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-sm rounded-md ${
+              view === 'list' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+            }`}
+          >
+            <List size={14} /> List
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('map')}
+            data-active={view === 'map'}
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-sm rounded-md ${
+              view === 'map' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+            }`}
+          >
+            <MapIcon size={14} /> Map
+          </button>
+        </div>
+
+        {/* Filter chips row */}
+        <div className="px-3 py-2 flex gap-2 overflow-x-auto">
+          <MarketPill />
+          <FilterChip
+            label={categoryFilter ? CATEGORIES[categoryFilter as CategorySlug]?.label ?? 'Category' : 'Category'}
+            active={!!categoryFilter}
+            onClear={categoryFilter ? () => setCategoryFilter(null) : undefined}
+            menuItems={CATEGORY_ORDER.map((slug) => ({
+              label: `${CATEGORIES[slug].emoji} ${CATEGORIES[slug].label}`,
+              onSelect: () => setCategoryFilter(slug),
+              selected: categoryFilter === slug,
+            }))}
+            placement="top"
+          />
+          <FilterChip
+            label={dayFilter ? WEEKDAYS.find((w) => w.slug === dayFilter)?.short ?? 'Day' : 'Day'}
+            active={!!dayFilter}
+            onClear={dayFilter ? () => setDayFilter(null) : undefined}
+            menuItems={WEEKDAYS.map((w) => ({
+              label: w.long,
+              onSelect: () => setDayFilter(w.slug),
+              selected: dayFilter === w.slug,
+            }))}
+            placement="top"
+          />
+          {anyFilter && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-xs text-neutral-600 whitespace-nowrap px-2"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+
+        {/* Search input row (closest to nav, easiest thumb reach) */}
+        <div className="px-3 pb-3">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
@@ -152,63 +278,7 @@ export function ExplorePage() {
             )}
           </div>
         </div>
-
-        <div className="px-3 pb-3 flex gap-2 overflow-x-auto">
-          <MarketPill />
-          <FilterChip
-            label={categoryFilter ? CATEGORIES[categoryFilter as CategorySlug]?.label ?? 'Category' : 'Category'}
-            active={!!categoryFilter}
-            onClear={categoryFilter ? () => setCategoryFilter(null) : undefined}
-            menuItems={CATEGORY_ORDER.map((slug) => ({
-              label: `${CATEGORIES[slug].emoji} ${CATEGORIES[slug].label}`,
-              onSelect: () => setCategoryFilter(slug),
-              selected: categoryFilter === slug,
-            }))}
-          />
-          <FilterChip
-            label={dayFilter ? WEEKDAYS.find((w) => w.slug === dayFilter)?.short ?? 'Day' : 'Day'}
-            active={!!dayFilter}
-            onClear={dayFilter ? () => setDayFilter(null) : undefined}
-            menuItems={WEEKDAYS.map((w) => ({
-              label: w.long,
-              onSelect: () => setDayFilter(w.slug),
-              selected: dayFilter === w.slug,
-            }))}
-          />
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-xs text-neutral-600 hover:text-neutral-900 whitespace-nowrap px-2"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-
-        <div className="px-3 pb-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            data-active={view === 'list'}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-sm rounded-md ${
-              view === 'list' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
-            }`}
-          >
-            <List size={14} /> List
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('map')}
-            data-active={view === 'map'}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-sm rounded-md ${
-              view === 'map' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
-            }`}
-          >
-            <MapIcon size={14} /> Map
-          </button>
-        </div>
-      </header>
+      </div>
 
       {showEmptyState ? (
         <section className="px-3 md:px-6 py-6 space-y-8">
@@ -293,10 +363,13 @@ interface FilterChipProps {
   active: boolean
   onClear?: () => void
   menuItems: { label: string; onSelect: () => void; selected: boolean }[]
+  placement?: 'bottom' | 'top'
 }
 
-function FilterChip({ label, active, onClear, menuItems }: FilterChipProps) {
+function FilterChip({ label, active, onClear, menuItems, placement = 'bottom' }: FilterChipProps) {
   const [open, setOpen] = useState(false)
+  const menuPosClasses =
+    placement === 'top' ? 'absolute z-50 bottom-full mb-1' : 'absolute z-50 top-full mt-1'
   return (
     <div className="relative">
       <button
@@ -322,26 +395,26 @@ function FilterChip({ label, active, onClear, menuItems }: FilterChipProps) {
         )}
       </button>
       {open && (
-        <div
-          className="absolute z-40 mt-1 w-48 bg-white rounded-lg border border-neutral-200 shadow-lg max-h-64 overflow-y-auto"
-          onMouseLeave={() => setOpen(false)}
-        >
-          {menuItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => {
-                item.onSelect()
-                setOpen(false)
-              }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 ${
-                item.selected ? 'font-medium text-emerald-700' : 'text-neutral-700'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className={`${menuPosClasses} w-48 bg-white rounded-lg border border-neutral-200 shadow-lg max-h-64 overflow-y-auto`}>
+            {menuItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  item.onSelect()
+                  setOpen(false)
+                }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 ${
+                  item.selected ? 'font-medium text-emerald-700' : 'text-neutral-700'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

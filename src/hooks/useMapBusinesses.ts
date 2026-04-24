@@ -18,7 +18,7 @@ export function useMapBusinesses() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
 
-  const fetchBusinesses = useCallback(async (bounds: Bounds, category?: string) => {
+  const fetchBusinesses = useCallback(async (bounds: Bounds | null, category?: string) => {
     if (timerRef.current) clearTimeout(timerRef.current)
 
     timerRef.current = setTimeout(async () => {
@@ -26,10 +26,16 @@ export function useMapBusinesses() {
       let query = supabase
         .from('businesses')
         .select('*')
-        .gte('latitude', bounds.south)
-        .lte('latitude', bounds.north)
-        .gte('longitude', bounds.west)
-        .lte('longitude', bounds.east)
+
+      // Apply bounds filter only when no category search (browsing the map)
+      // Category searches query globally so we can zoom to results
+      if (bounds && !category) {
+        query = query
+          .gte('latitude', bounds.south)
+          .lte('latitude', bounds.north)
+          .gte('longitude', bounds.west)
+          .lte('longitude', bounds.east)
+      }
 
       if (category) {
         query = query.ilike('category', `%${category}%`)

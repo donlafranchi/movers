@@ -36,6 +36,7 @@ export function Map() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({})
+  const businessesRef = useRef<Business[]>([])
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [noResultsQuery, setNoResultsQuery] = useState<string | null>(null)
@@ -110,7 +111,7 @@ export function Map() {
     })
 
     map.on('render', () => {
-      if (!map.isSourceLoaded(SOURCE_ID)) return
+      if (!map.getSource(SOURCE_ID) || !map.isSourceLoaded(SOURCE_ID)) return
       updateMarkers(map)
     })
 
@@ -200,7 +201,7 @@ export function Map() {
 
           el.addEventListener('click', (e) => {
             e.stopPropagation()
-            const biz = businesses.find((b) => b.id === id)
+            const biz = businessesRef.current.find((b) => b.id === id)
             if (biz) setSelectedBusiness(biz)
           })
 
@@ -220,6 +221,8 @@ export function Map() {
 
   // Update GeoJSON source when businesses change
   useEffect(() => {
+    businessesRef.current = businesses
+
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
 
@@ -232,6 +235,21 @@ export function Map() {
     }
 
     source.setData(businessesToGeoJSON(businesses))
+
+    // Fit map bounds to results when a category filter is active
+    if (categoryFilterRef.current && businesses.length > 0) {
+      const coords = businesses
+        .filter((b) => b.latitude != null && b.longitude != null)
+        .map((b) => [b.longitude!, b.latitude!] as [number, number])
+
+      if (coords.length > 0) {
+        const bounds = coords.reduce(
+          (b, c) => b.extend(c),
+          new mapboxgl.LngLatBounds(coords[0], coords[0])
+        )
+        map.fitBounds(bounds, { padding: 60, maxZoom: 15 })
+      }
+    }
   }, [businesses])
 
   // Search callbacks
@@ -239,8 +257,9 @@ export function Map() {
     setCategoryFilter(category)
     categoryFilterRef.current = category
     setNoResultsQuery(null)
-    refreshPins()
-  }, [refreshPins])
+    // Pass null bounds so the query fetches all matching businesses globally
+    fetchBusinesses(null, category)
+  }, [fetchBusinesses])
 
   const handleLocationSelect = useCallback((coordinates: [number, number]) => {
     setNoResultsQuery(null)

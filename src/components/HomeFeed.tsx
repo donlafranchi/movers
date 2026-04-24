@@ -14,7 +14,7 @@ import { VendorCard } from './VendorCard'
 function supabase() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   )
 }
 
@@ -141,24 +141,35 @@ export function HomeFeed() {
   }, [selectedMarket])
 
   return (
-    <main className="pb-24" data-testid="home-feed">
-      <header className="sticky top-0 z-30 bg-white border-b border-neutral-200 md:hidden">
-        <div className="flex items-center gap-2 p-3">
-          <Link href="/explore" className="flex-1 flex items-center gap-2 bg-neutral-100 rounded-full px-4 py-2 text-sm text-neutral-500">
-            <Search size={16} />
-            <span>Search vendors, products, markets</span>
-          </Link>
-          <Link href="/following" aria-label="Following" className="p-2">
-            <Heart size={22} className="text-neutral-700" />
-          </Link>
-          <Link href="/you" aria-label="You" className="p-2">
-            <User size={22} className="text-neutral-700" />
-          </Link>
-        </div>
-        <div className="px-3 pb-3">
+    <main className="pb-40 md:pb-24" data-testid="home-feed">
+      {/* Top: minimal market pill only on mobile */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-neutral-200 md:hidden">
+        <div className="px-3 py-2 flex items-center justify-between gap-2">
           <MarketPill />
+          <div className="flex items-center gap-1">
+            <Link href="/following" aria-label="Following" className="p-2">
+              <Heart size={20} className="text-neutral-700" />
+            </Link>
+            <Link href="/you" aria-label="You" className="p-2">
+              <User size={20} className="text-neutral-700" />
+            </Link>
+          </div>
         </div>
       </header>
+
+      {/* Bottom-anchored search bar (mobile only) */}
+      <div
+        className="fixed inset-x-0 z-40 px-3 md:hidden"
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+      >
+        <Link
+          href="/explore"
+          className="flex items-center gap-2 bg-white shadow-lg border border-neutral-200 rounded-full px-4 py-3 text-sm text-neutral-500"
+        >
+          <Search size={16} />
+          <span>Search vendors, products, markets</span>
+        </Link>
+      </div>
 
       {/* Hero */}
       <section className="px-3 md:px-6 pt-4">

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
   if (!url || !key) return NextResponse.json({ error: 'missing supabase env' }, { status: 500 })
 
   const admin = createClient(url, key, { auth: { persistSession: false } })
@@ -101,7 +101,7 @@ export async function GET(request: Request) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.FOLLOW_EMAIL_FROM ?? 'Main Street <noreply@mainstreetmarket.com>',
+          from: process.env.FOLLOW_EMAIL_FROM ?? 'Main Street <onboarding@resend.dev>',
           to: p.to,
           subject: `${p.vendorName} will be at ${p.marketName} on ${p.marketDate}`,
           html: `<p>${p.vendorName} is at <strong>${p.marketName}</strong> on ${p.marketDate}.</p><p><a href="https://mainstreetmarket.com/vendors/${p.vendorSlug}">View vendor profile</a></p>`,
