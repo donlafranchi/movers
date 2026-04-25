@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Heart, User, Search } from 'lucide-react'
+import { User, Search } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { Vendor, Market, VendorCategory } from '@/lib/types'
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories'
 import { formatNextMarketDate } from '@/lib/market-dates'
 import { useMarket } from './MarketContext'
-import { MarketPill } from './MarketPill'
 import { VendorCard } from './VendorCard'
 import { AuthCtaButtons } from './AuthCtaButtons'
 import { RecruitmentGrid } from './RecruitmentGrid'
@@ -148,19 +147,14 @@ export function HomeFeed() {
 
   return (
     <main className="pb-40 md:pb-24" data-testid="home-feed">
-      {/* Top: minimal market pill only on mobile */}
+      {/* Mobile top header */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-neutral-200 md:hidden">
         <div className="px-3 py-2 flex items-center justify-between gap-2">
-          <MarketPill />
+          <Link href="/" className="font-semibold text-[--color-accent]">Main Street</Link>
           {isAuth ? (
-            <div className="flex items-center gap-1">
-              <Link href="/following" aria-label="Following" className="p-2">
-                <Heart size={20} className="text-neutral-700" />
-              </Link>
-              <Link href="/you" aria-label="You" className="p-2">
-                <User size={20} className="text-neutral-700" />
-              </Link>
-            </div>
+            <Link href="/you" aria-label="You" className="p-2">
+              <User size={20} className="text-neutral-700" />
+            </Link>
           ) : (
             <AuthCtaButtons variant="compact" />
           )}
