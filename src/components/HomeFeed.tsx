@@ -10,6 +10,7 @@ import { formatNextMarketDate } from '@/lib/market-dates'
 import { useMarket } from './MarketContext'
 import { MarketPill } from './MarketPill'
 import { VendorCard } from './VendorCard'
+import { AuthCtaButtons } from './AuthCtaButtons'
 
 function supabase() {
   return createBrowserClient(
@@ -105,7 +106,11 @@ export function HomeFeed() {
       setMarketsNearby(allMarkets.slice(0, 6))
 
       if (authed) {
-        const { data: follows } = await client.from('follows').select('vendor_id').eq('user_id', userId)
+        const { data: follows } = await client
+          .from('follows')
+          .select('vendor_id')
+          .eq('user_id', userId)
+          .is('unfollowed_at', null)
         const followedIds = (follows ?? []).map((f) => f.vendor_id)
         const followedList = allVendors
           .filter((v) => followedIds.includes(v.id))
@@ -146,14 +151,18 @@ export function HomeFeed() {
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-neutral-200 md:hidden">
         <div className="px-3 py-2 flex items-center justify-between gap-2">
           <MarketPill />
-          <div className="flex items-center gap-1">
-            <Link href="/following" aria-label="Following" className="p-2">
-              <Heart size={20} className="text-neutral-700" />
-            </Link>
-            <Link href="/you" aria-label="You" className="p-2">
-              <User size={20} className="text-neutral-700" />
-            </Link>
-          </div>
+          {isAuth ? (
+            <div className="flex items-center gap-1">
+              <Link href="/following" aria-label="Following" className="p-2">
+                <Heart size={20} className="text-neutral-700" />
+              </Link>
+              <Link href="/you" aria-label="You" className="p-2">
+                <User size={20} className="text-neutral-700" />
+              </Link>
+            </div>
+          ) : (
+            <AuthCtaButtons variant="compact" />
+          )}
         </div>
       </header>
 
@@ -203,6 +212,45 @@ export function HomeFeed() {
           </p>
         )}
       </section>
+
+      {!isAuth && (
+        <section className="px-3 md:px-6 mt-6" data-testid="signup-banner">
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-amber-50 overflow-hidden">
+            <div className="p-4 md:p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                Join Main Street — free, always
+              </p>
+              <h2 className="mt-1 text-lg md:text-xl font-semibold text-neutral-900">
+                Help us build a market that actually serves Sacramento.
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-px bg-emerald-200">
+              <Link
+                href="/auth/signup"
+                data-testid="signup-banner-buyer"
+                className="block bg-white hover:bg-emerald-50 p-4 md:p-5 transition-colors"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">For shoppers</p>
+                <p className="mt-1 font-semibold text-neutral-900">Follow your makers →</p>
+                <p className="mt-1 text-sm text-neutral-600">
+                  Save vendors, get market reminders, see what's fresh this week.
+                </p>
+              </Link>
+              <Link
+                href="/join"
+                data-testid="signup-banner-seller"
+                className="block bg-white hover:bg-amber-50 p-4 md:p-5 transition-colors"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">For makers & sellers</p>
+                <p className="mt-1 font-semibold text-neutral-900">List your business — free →</p>
+                <p className="mt-1 text-sm text-neutral-600">
+                  90 seconds to set up. No fees, ever. You keep every customer.
+                </p>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Shop by Category */}
       <section className="px-3 md:px-6 mt-8">

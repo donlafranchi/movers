@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     admin.from('businesses').select('*'),
     admin.from('markets').select('*'),
     admin.from('market_vendors').select('vendor_id, market_id'),
-    admin.from('follows').select('user_id, vendor_id'),
+    admin.from('follows').select('user_id, vendor_id').is('unfollowed_at', null),
     admin.from('user_preferences').select('user_id, follow_emails_enabled'),
     admin.from('follow_notifications').select('user_id, vendor_id, market_id, market_date'),
   ])

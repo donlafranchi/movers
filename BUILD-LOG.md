@@ -31,9 +31,11 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T016 | Market Selection Modal | ✅ Complete |
 | T017 | Vendor Profile Update | ✅ Complete |
 | T018 | Follow Vendor + Notifications | ✅ Complete |
+| T022 | Foundational Schema (events, bulletins, vendor analytics, follow soft-delete) | ✅ Complete |
 
 ## Latest Commits
 
+- T022: Foundational schema — events, vendor_bulletins, bulletin_deliveries, vendor_events, vendor_stats_daily; follows soft-delete
 - T012-T018: Etsy-style feed pivot — schema, bottom nav, home feed, explore, market modal, vendor profile, follow + notifications
 
 

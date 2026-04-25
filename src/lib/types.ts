@@ -76,6 +76,89 @@ export interface Follow {
   user_id: string
   vendor_id: string
   created_at: string
+  last_active_at: string | null
+  unfollowed_at: string | null
+}
+
+export type EventType = 'market_session' | 'class' | 'community_project' | 'vendor_special'
+export type EventHostType = 'vendor' | 'market' | 'platform'
+export type EventStatus = 'scheduled' | 'cancelled' | 'completed'
+
+export interface PlatformEvent {
+  id: string
+  event_type: EventType
+  host_type: EventHostType
+  host_id: string
+  title: string
+  description: string | null
+  starts_at: string
+  ends_at: string | null
+  recurrence: Record<string, unknown> | null
+  location_lat: number
+  location_lng: number
+  location_label: string | null
+  cost_cents: number | null
+  capacity: number | null
+  cover_photo_url: string | null
+  status: EventStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface VendorBulletin {
+  id: string
+  vendor_id: string
+  author_user_id: string
+  title: string | null
+  body: string
+  cover_photo_url: string | null
+  attached_event_id: string | null
+  published_at: string | null
+  audience: 'all_followers'
+  delivery_channels: { in_app: boolean; email: boolean; push: boolean }
+  stats: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface BulletinDelivery {
+  bulletin_id: string
+  user_id: string
+  delivered_at: string
+  opened_at: string | null
+  clicked_at: string | null
+  unsubscribed_at: string | null
+}
+
+export type VendorEventName =
+  | 'profile_view'
+  | 'support_click'
+  | 'follow'
+  | 'unfollow'
+  | 'share'
+  | 'bulletin_open'
+  | 'bulletin_click'
+  | 'bulletin_published'
+
+export interface VendorAnalyticsEvent {
+  id: string
+  vendor_id: string
+  user_id: string | null
+  event_name: VendorEventName
+  referrer: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface VendorStatsDaily {
+  vendor_id: string
+  day: string
+  profile_views: number
+  support_clicks: number
+  new_follows: number
+  unfollows: number
+  shares: number
+  bulletin_opens: number
 }
 
 export interface UserPreferences {

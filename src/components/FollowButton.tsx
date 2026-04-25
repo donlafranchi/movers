@@ -33,11 +33,11 @@ export function FollowButton({ vendorId, vendorName, size = 'md' }: Props) {
       if (uid) {
         client
           .from('follows')
-          .select('id')
+          .select('id, unfollowed_at')
           .eq('user_id', uid)
           .eq('vendor_id', vendorId)
           .maybeSingle()
-          .then(({ data: row }) => setFollowing(!!row))
+          .then(({ data: row }) => setFollowing(!!row && !row.unfollowed_at))
       }
     })
   }, [vendorId])
@@ -52,7 +52,10 @@ export function FollowButton({ vendorId, vendorName, size = 'md' }: Props) {
     startTransition(async () => {
       const client = supabase()
       if (next) {
-        const { error } = await client.from('follows').insert({ user_id: userId, vendor_id: vendorId })
+        const { error } = await client.from('follows').upsert(
+          { user_id: userId, vendor_id: vendorId, unfollowed_at: null, last_active_at: new Date().toISOString() },
+          { onConflict: 'user_id,vendor_id' }
+        )
         if (error) {
           setFollowing(false)
           setToast(`Couldn't follow — try again`)
@@ -60,7 +63,11 @@ export function FollowButton({ vendorId, vendorName, size = 'md' }: Props) {
           setToast(`Following ${vendorName}`)
         }
       } else {
-        const { error } = await client.from('follows').delete().eq('user_id', userId).eq('vendor_id', vendorId)
+        const { error } = await client
+          .from('follows')
+          .update({ unfollowed_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('vendor_id', vendorId)
         if (error) {
           setFollowing(true)
           setToast(`Couldn't unfollow — try again`)

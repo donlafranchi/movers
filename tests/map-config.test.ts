@@ -44,13 +44,13 @@ describe('PIN_COLORS', () => {
     })
   })
 
-  it('maps correct colors to tiers', () => {
-    expect(PIN_COLORS.independent.name).toBe('gold')
-    expect(PIN_COLORS.coop.name).toBe('green')
-    expect(PIN_COLORS['local-franchise'].name).toBe('amber')
-    expect(PIN_COLORS.challenger.name).toBe('blue')
-    expect(PIN_COLORS['mission-driven'].name).toBe('purple')
-    expect(PIN_COLORS['pe-corporate'].name).toBe('grey')
+  it('maps green→gray ownership spectrum (deep green = local, near-black = extractive)', () => {
+    expect(PIN_COLORS.coop.name).toBe('deep-green')
+    expect(PIN_COLORS.independent.name).toBe('green')
+    expect(PIN_COLORS['mission-driven'].name).toBe('sage')
+    expect(PIN_COLORS['local-franchise'].name).toBe('gray-green')
+    expect(PIN_COLORS.challenger.name).toBe('light-gray')
+    expect(PIN_COLORS['pe-corporate'].name).toBe('near-black')
   })
 
   it('all color names are unique', () => {

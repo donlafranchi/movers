@@ -37,7 +37,11 @@ export default function FollowingPage() {
         return
       }
       setAuthed(true)
-      const { data: follows } = await client.from('follows').select('vendor_id').eq('user_id', uid)
+      const { data: follows } = await client
+        .from('follows')
+        .select('vendor_id')
+        .eq('user_id', uid)
+        .is('unfollowed_at', null)
       const ids = (follows ?? []).map((f) => f.vendor_id)
       if (ids.length === 0) {
         setLoaded(true)
