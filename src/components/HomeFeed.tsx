@@ -9,6 +9,7 @@ import { useMarket } from './MarketContext'
 import { AuthCtaButtons } from './AuthCtaButtons'
 import { RecruitmentGrid } from './RecruitmentGrid'
 import { EventCard, buildHostMaps } from './EventCard'
+import { BulletinFeedCard } from './BulletinFeedCard'
 
 function supabase() {
   return createBrowserClient(
@@ -36,11 +37,13 @@ interface BulletinWithVendor {
 export function HomeFeed() {
   const { selectedMarket } = useMarket()
   const [isAuth, setIsAuth] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterChip>('all')
   const [events, setEvents] = useState<PlatformEvent[]>([])
   const [vendorMap, setVendorMap] = useState<ReturnType<typeof buildHostMaps>['vendorMap']>(new Map())
   const [marketMap, setMarketMap] = useState<ReturnType<typeof buildHostMaps>['marketMap']>(new Map())
   const [bulletins, setBulletins] = useState<BulletinWithVendor[]>([])
+  const [mutedVendorIds, setMutedVendorIds] = useState<Set<string>>(new Set())
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -53,10 +56,11 @@ export function HomeFeed() {
 
     async function load() {
       const { data: userData } = await client.auth.getUser()
-      const userId = userData.user?.id
-      const authed = !!userId
+      const uid = userData.user?.id
+      const authed = !!uid
       if (cancelled) return
       setIsAuth(authed)
+      setUserId(uid ?? null)
 
       const now = new Date().toISOString()
       const horizon = new Date(Date.now() + WINDOW_DAYS * 24 * 3600 * 1000).toISOString()
@@ -83,13 +87,14 @@ export function HomeFeed() {
       setMarketMap(mm)
       setEvents((ev ?? []) as PlatformEvent[])
 
-      if (authed) {
-        const { data: follows } = await client
-          .from('follows')
-          .select('vendor_id')
-          .eq('user_id', userId)
-          .is('unfollowed_at', null)
-        const followIds = (follows ?? []).map((f) => f.vendor_id)
+      if (authed && uid) {
+        const [{ data: follows }, { data: mutes }] = await Promise.all([
+          client.from('follows').select('vendor_id').eq('user_id', uid).is('unfollowed_at', null),
+          client.from('bulletin_mutes').select('vendor_id').eq('user_id', uid),
+        ])
+        const muteSet = new Set((mutes ?? []).map((m) => m.vendor_id))
+        setMutedVendorIds(muteSet)
+        const followIds = (follows ?? []).map((f) => f.vendor_id).filter((id) => !muteSet.has(id))
         if (followIds.length > 0) {
           const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
           const { data: bulls } = await client
@@ -186,23 +191,21 @@ export function HomeFeed() {
       </nav>
 
       {/* Pinned bulletins */}
-      {bulletins.length > 0 && (
+      {bulletins.filter((b) => !mutedVendorIds.has(b.vendor.id)).length > 0 && (
         <section className="px-3 md:px-6 mt-6" data-testid="bulletin-pinned-section">
           <h2 className="text-lg font-semibold text-neutral-900 mb-3">From vendors you follow</h2>
           <div className="grid gap-3 md:grid-cols-2">
-            {bulletins.map((b) => (
-              <Link
-                key={b.bulletin.id}
-                href={`/vendors/${b.vendor.slug}`}
-                className="card card-hover p-4 block hover:no-underline"
-              >
-                <p className="text-xs font-semibold text-[--color-accent]">{b.vendor.name}</p>
-                {b.bulletin.title && (
-                  <h3 className="text-sm font-semibold text-neutral-900 mt-1">{b.bulletin.title}</h3>
-                )}
-                <p className="text-sm text-neutral-700 mt-1 line-clamp-3">{b.bulletin.body}</p>
-              </Link>
-            ))}
+            {bulletins
+              .filter((b) => !mutedVendorIds.has(b.vendor.id))
+              .map((b) => (
+                <BulletinFeedCard
+                  key={b.bulletin.id}
+                  bulletin={b.bulletin}
+                  vendor={b.vendor}
+                  userId={userId}
+                  onMute={(vid) => setMutedVendorIds((prev) => new Set(prev).add(vid))}
+                />
+              ))}
           </div>
         </section>
       )}
