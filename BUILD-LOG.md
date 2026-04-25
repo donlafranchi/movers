@@ -39,7 +39,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T023 | `/you` Restructure (Saved/Following/Settings, vendor mode entry) | ✅ Complete |
 | T024 | Events-driven Home Feed | ✅ Complete |
 | T025 | Vendor Bulletin Compose + Delivery (T1) | ✅ Complete |
-| T026 | Vendor Founder Dashboard (T1) | ⬜ Open (b1) |
+| T026 | Vendor Founder Dashboard (T1) | ✅ Complete |
 | T027 | Event Surfacing on Profiles | ⏸️ Deferred (b2) |
 
 ## Remaining b1 MVP Work
@@ -54,6 +54,7 @@ See [planning/bundles/b1-mvp.md](../planning/bundles/b1-mvp.md) for the full MVP
 
 ## Latest Commits
 
+- T026: Vendor founder dashboard — `/you/vendor` Overview/Followers/Activity tabs, MetricCards + Sparklines, ListingHealth, Top Tasks aside, CSV export, migration 006 `rollup_vendor_stats_daily`
 - T025: Vendor bulletin compose + delivery — `/you/vendor/bulletins/*`, fan-out API, mute, open/unsubscribe primitives, migration 005
 - T024: Events-driven Home feed — `EventCard`, filter chips, pinned bulletin section, lazy `market_session` generation, click telemetry
 - T023: `/you` restructure — Saved / Following / Settings tabs, Your Market row, vendor mode entry
