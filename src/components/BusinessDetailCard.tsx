@@ -6,6 +6,7 @@ import { OwnershipBadge } from './OwnershipBadge'
 import { SupportButton } from './SupportButton'
 import { ReportForm } from './ReportForm'
 import { Toast } from './Toast'
+import { AuthGateModal } from './AuthGateModal'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
 
@@ -21,6 +22,7 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
   const [storyExpanded, setStoryExpanded] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  const [authGateOpen, setAuthGateOpen] = useState(false)
 
   const handleShare = useCallback(() => {
     const url = `${window.location.origin}/business/${business.slug}`
@@ -34,39 +36,40 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
   return (
     <div
       data-testid="business-detail-card"
-      className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-2xl shadow-lg p-4 pb-6 z-30 max-h-[70vh] overflow-y-auto"
+      data-extractive={business.ownership_tier === 'pe-corporate' ? 'true' : undefined}
+      className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-[0_-6px_16px_rgba(0,0,0,0.12)] p-6 pb-8 z-30 max-h-[70vh] overflow-y-auto"
     >
       <button
         onClick={onClose}
-        className="absolute top-2 right-3 text-zinc-400 text-xl"
+        className="absolute top-3 right-4 text-[--color-fg-muted] hover:text-[--color-fg] text-2xl leading-none transition-colors"
         aria-label="Close"
       >
         ×
       </button>
 
-      <h2 data-testid="business-name" className="text-lg font-bold pr-8">
+      <h2 data-testid="business-name" className="text-[22px] font-bold pr-8 leading-tight text-[--color-fg]">
         {business.name}
       </h2>
 
-      <OwnershipBadge tier={business.ownership_tier} className="mt-1" />
+      <OwnershipBadge tier={business.ownership_tier} className="mt-2" />
 
-      <p data-testid="business-address" className="text-sm text-zinc-500 mt-2">
+      <p data-testid="business-address" className="text-sm text-[--color-fg-muted] mt-3">
         {business.street_address}, {business.city}, {business.state} {business.zip}
       </p>
 
-      <p data-testid="business-category" className="text-sm text-zinc-500 mt-1">
+      <p data-testid="business-category" className="text-sm text-[--color-fg-muted] mt-1">
         {business.category}
       </p>
 
       {business.ownership_tier === 'pe-corporate' && (
         <>
           {business.parent_company && (
-            <p data-testid="parent-company" className="text-sm text-zinc-500 mt-1">
+            <p data-testid="parent-company" className="text-sm text-[--color-fg-muted] mt-1">
               Parent: {business.parent_company}
             </p>
           )}
           {business.location_count != null && (
-            <p data-testid="location-count" className="text-sm text-zinc-500">
+            <p data-testid="location-count" className="text-sm text-[--color-fg-muted]">
               {business.location_count.toLocaleString()} locations
             </p>
           )}
@@ -74,14 +77,14 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
       )}
 
       {business.ownership_tier === 'mission-driven' && business.certification_type && (
-        <p data-testid="certification-type" className="text-sm text-zinc-500 mt-1">
+        <p data-testid="certification-type" className="text-sm text-[--color-fg-muted] mt-1">
           {business.certification_type}
         </p>
       )}
 
       {hasStory && (
-        <div data-testid="business-story" className="mt-3">
-          <p className="text-sm">
+        <div data-testid="business-story" className="mt-4 pt-4 border-t border-[--color-border]">
+          <p className="text-[15px] leading-relaxed text-[--color-fg]">
             {storyIsLong && !storyExpanded
               ? business.story!.slice(0, STORY_TRUNCATE_LENGTH) + '...'
               : business.story}
@@ -90,7 +93,7 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
             <button
               data-testid="read-more"
               onClick={() => setStoryExpanded(true)}
-              className="text-sm text-blue-600 mt-1"
+              className="text-sm text-[--color-fg] underline mt-2"
             >
               Read more
             </button>
@@ -98,26 +101,34 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
         </div>
       )}
 
-      <div className="mt-4">
+      <div className="mt-5">
         {user ? (
           <SupportButton businessId={business.id} userId={user.id} />
         ) : (
-          <Link
-            href="/auth/login"
+          <button
+            type="button"
+            onClick={() => setAuthGateOpen(true)}
             data-testid="sign-in-to-support"
-            className="inline-block text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 px-4 text-sm"
+            className="btn-primary w-full"
           >
-            Sign in to support
-          </Link>
+            Support
+          </button>
         )}
       </div>
+      <AuthGateModal
+        open={authGateOpen}
+        onClose={() => setAuthGateOpen(false)}
+        intent="support"
+        headline={`Sign up to support ${business.name}`}
+        subtext="Hearted businesses save to your profile and let owners see what you care about."
+      />
 
       <div className="flex gap-2 mt-3">
         {user ? (
           <button
             data-testid="report-concern-button"
             onClick={() => setReportOpen(true)}
-            className="flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 py-2 text-sm font-medium"
+            className="btn-secondary flex-1 !py-2.5"
           >
             Report a Concern
           </button>
@@ -125,7 +136,7 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
           <Link
             href="/auth/login"
             data-testid="sign-in-to-report"
-            className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
+            className="btn-secondary flex-1 !py-2.5"
           >
             Sign in to report
           </Link>
@@ -133,7 +144,7 @@ export function BusinessDetailCard({ business, onClose }: BusinessDetailCardProp
         <button
           data-testid="share-button"
           onClick={handleShare}
-          className="rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-4 py-2 text-sm font-medium"
+          className="btn-secondary !py-2.5 !px-5"
         >
           Share
         </button>

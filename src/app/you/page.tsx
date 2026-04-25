@@ -60,13 +60,28 @@ export default function YouPage() {
     return (
       <main className="p-6 pb-24 max-w-md mx-auto text-center">
         <h1 className="text-xl font-semibold">You</h1>
-        <p className="mt-3 text-neutral-600 text-sm">Sign in or create an account.</p>
-        <div className="mt-4 flex gap-2 justify-center">
-          <Link href="/auth/signup" className="bg-emerald-700 text-white rounded-md px-4 py-2 text-sm font-medium">
-            Sign Up
+        <p className="mt-3 text-neutral-600 text-sm">Sign in or create an account to follow vendors and save your market.</p>
+        <div className="mt-4 flex flex-col gap-2">
+          <Link
+            href="/auth/signup"
+            className="bg-[--color-accent] text-white rounded-full px-4 py-2.5 text-sm font-medium"
+          >
+            Create account
           </Link>
-          <Link href="/auth/login" className="border border-neutral-300 rounded-md px-4 py-2 text-sm font-medium">
-            Log In
+          <Link
+            href="/auth/login"
+            className="border border-neutral-300 rounded-full px-4 py-2.5 text-sm font-medium"
+          >
+            Log in
+          </Link>
+        </div>
+        <div className="mt-8 pt-6 border-t border-neutral-200">
+          <p className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">Are you a vendor?</p>
+          <Link
+            href="/join"
+            className="mt-3 inline-flex items-center justify-center rounded-full border border-[--color-accent] text-[--color-accent] px-4 py-2 text-sm font-medium hover:bg-[--color-accent-tint]"
+          >
+            Become a vendor →
           </Link>
         </div>
       </main>
@@ -83,11 +98,11 @@ export default function YouPage() {
           Vendors I follow
         </Link>
         {hasVendor ? (
-          <Link href="/register-business" className="block bg-white border border-neutral-200 rounded-lg px-4 py-3 text-sm font-medium hover:border-neutral-400">
+          <Link href="/register-vendor" className="block bg-white border border-neutral-200 rounded-lg px-4 py-3 text-sm font-medium hover:border-neutral-400">
             My vendor listing
           </Link>
         ) : (
-          <Link href="/register-business" className="block bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm font-medium text-emerald-800 hover:bg-emerald-100">
+          <Link href="/register-vendor" className="block bg-[--color-accent-tint] border border-[--color-accent-tint] rounded-lg px-4 py-3 text-sm font-medium text-[--color-accent] hover:bg-[--color-accent-tint]">
             Register your vendor listing
           </Link>
         )}

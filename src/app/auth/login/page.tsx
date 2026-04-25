@@ -1,78 +1,62 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/hooks/useAuth'
+import { AuthMethods } from '@/components/AuthMethods'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const { signIn } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next')
+  const signupHref = next ? `/auth/signup?next=${encodeURIComponent(next)}` : '/auth/signup'
+  const initialError = searchParams.get('error')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSubmitting(true)
+  const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null)
 
-    const { error } = await signIn(email, password)
-    setSubmitting(false)
-
-    if (error) {
-      setError(error.message)
-      return
-    }
-
-    router.push('/')
+  if (magicLinkEmail) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <h1 className="text-2xl font-semibold mb-3">Check your email</h1>
+          <p className="text-sm text-neutral-600 mb-6">
+            We sent a sign-in link to <strong>{magicLinkEmail}</strong>. Click the link to log in — no password needed.
+          </p>
+          <button
+            type="button"
+            onClick={() => setMagicLinkEmail(null)}
+            className="text-sm text-[--color-accent] underline"
+          >
+            Use a different method
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex min-h-screen items-end justify-center pb-20 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6" data-testid="login-heading">Log In</h1>
-        <form onSubmit={handleSubmit} data-testid="login-form">
-          <label className="block mb-4">
-            <span className="text-sm font-medium">Email</span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              data-testid="email-input"
-            />
-          </label>
-          <label className="block mb-4">
-            <span className="text-sm font-medium">Password</span>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              data-testid="password-input"
-            />
-          </label>
-          {error && (
-            <p className="text-red-600 text-sm mb-4" data-testid="auth-error">
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded bg-foreground text-background py-2 font-medium disabled:opacity-50"
-            data-testid="submit-button"
-          >
-            {submitting ? 'Logging in...' : 'Log In'}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-center">
+        <h1 className="text-2xl font-semibold mb-5" data-testid="login-heading">
+          Welcome back
+        </h1>
+
+        {initialError && (
+          <p className="mb-4 text-sm text-red-600">{initialError}</p>
+        )}
+
+        <AuthMethods
+          mode="login"
+          next={next}
+          onPasswordSuccess={() => router.push(next && next.startsWith('/') ? next : '/')}
+          onMagicLinkSent={(email) => setMagicLinkEmail(email)}
+        />
+
+        <p className="mt-6 text-sm text-center text-neutral-600">
           Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" className="underline">Sign up</Link>
+          <Link href={signupHref} className="text-[--color-accent] underline">
+            Sign up
+          </Link>
         </p>
       </div>
     </div>

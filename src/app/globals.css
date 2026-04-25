@@ -2,27 +2,102 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1a1a1a;
 }
 
 @theme inline {
+  /* Surfaces & text */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: #ffffff;
+  --color-surface: #f7f6f2;
+  --color-fg: #1a1a1a;
+  --color-fg-muted: #6b6b6b;
+  --color-border: #e5e3dd;
 
-  /* Ownership tier colors */
-  --color-ownership-independent: #D4A017;
-  --color-ownership-coop: #1B7A3D;
-  --color-ownership-local-franchise: #E8A317;
-  --color-ownership-challenger: #2196F3;
-  --color-ownership-mission-driven: #9C27B0;
-  --color-ownership-pe-corporate: #9E9E9E;
+  /* Single brand accent — Tide */
+  --color-accent: #0fab8e;
+  --color-accent-hover: #0a8a72;
+  --color-accent-tint: #e8f7f2;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.16);
+
+  /* Ownership tier colors — green (local) → gray/black (extractive) spectrum */
+  --color-ownership-coop: #0e6b2e;
+  --color-ownership-independent: #1b7a3d;
+  --color-ownership-mission-driven: #5a8f66;
+  --color-ownership-local-franchise: #97a89a;
+  --color-ownership-challenger: #b0b0b0;
+  --color-ownership-pe-corporate: #2a2a2a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+}
+
+/* Component recipes */
+
+.input {
+  @apply block w-full rounded-lg border border-[--color-border] bg-white px-3 py-2.5 text-sm text-[--color-fg] placeholder:text-[--color-fg-muted] focus:outline-none focus:ring-2 focus:ring-[--color-fg] focus:border-transparent;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-[--color-accent] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[--color-accent-hover] hover:no-underline focus:outline-none;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border border-[--color-border] bg-white px-5 py-3 text-sm font-medium text-[--color-fg] transition-colors hover:bg-[--color-surface] hover:no-underline focus:outline-none;
+}
+
+.card {
+  @apply bg-white rounded-xl overflow-hidden transition-all duration-200 ease-out;
+}
+
+.card-hover {
+  @apply hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] hover:-translate-y-0.5;
+}
+
+.chip {
+  @apply inline-flex items-center rounded-full border border-[--color-border] bg-white px-3.5 py-2 text-sm text-[--color-fg] transition-colors hover:bg-[--color-surface];
+}
+
+.chip-selected {
+  @apply border-transparent bg-[--color-fg] text-white hover:bg-[--color-fg];
+}
+
+/* Extractive listings render visually muted — Wall Street fades into the background */
+[data-extractive="true"] {
+  filter: grayscale(0.6);
+  opacity: 0.78;
+  transition: filter 200ms ease-out, opacity 200ms ease-out;
+}
+[data-extractive="true"]:hover {
+  filter: grayscale(0);
+  opacity: 1;
 }

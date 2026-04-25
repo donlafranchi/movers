@@ -1,114 +1,65 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/hooks/useAuth'
+import { AuthMethods } from '@/components/AuthMethods'
 
 export default function SignUpPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [confirmationSent, setConfirmationSent] = useState(false)
-  const { signUp } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next')
+  const loginHref = next ? `/auth/login?next=${encodeURIComponent(next)}` : '/auth/login'
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
+  const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null)
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
-    setSubmitting(true)
-    const { error } = await signUp(email, password)
-    setSubmitting(false)
-
-    if (error) {
-      if (error.message.includes('already registered')) {
-        setError('Email already registered. Log in instead.')
-      } else {
-        setError(error.message)
-      }
-      return
-    }
-
-    setConfirmationSent(true)
-  }
-
-  if (confirmationSent) {
+  if (magicLinkEmail) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-sm text-center" data-testid="confirmation-message">
-          <h1 className="text-2xl font-bold mb-4">Check your email</h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
-            We sent a confirmation link to <strong>{email}</strong>. Click the link in your email to activate your account.
+          <h1 className="text-2xl font-semibold mb-3">Check your email</h1>
+          <p className="text-sm text-neutral-600 mb-6">
+            We sent a sign-in link to <strong>{magicLinkEmail}</strong>. Click the link to finish signing up — no password needed.
           </p>
-          <Link
-            href="/auth/login"
-            className="inline-block rounded bg-foreground text-background py-2 px-6 font-medium text-sm"
+          <button
+            type="button"
+            onClick={() => setMagicLinkEmail(null)}
+            className="text-sm text-[--color-accent] underline"
           >
-            Go to Login
-          </Link>
+            Use a different method
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-end justify-center pb-20 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6" data-testid="signup-heading">Create Account</h1>
-        <form onSubmit={handleSubmit} data-testid="signup-form">
-          <label className="block mb-4">
-            <span className="text-sm font-medium">Email</span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              data-testid="email-input"
-            />
-          </label>
-          <label className="block mb-4">
-            <span className="text-sm font-medium">Password</span>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded border px-3 py-2"
-              data-testid="password-input"
-            />
-            <span className="text-xs text-gray-500">Minimum 8 characters</span>
-          </label>
-          {error && (
-            <p className="text-red-600 text-sm mb-4" data-testid="auth-error">
-              {error}{' '}
-              {error.includes('Log in') && (
-                <Link href="/auth/login" className="underline" data-testid="login-link">
-                  Log in
-                </Link>
-              )}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded bg-foreground text-background py-2 font-medium disabled:opacity-50"
-            data-testid="submit-button"
-          >
-            {submitting ? 'Creating account...' : 'Sign Up'}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-center">
+        <h1 className="text-2xl font-semibold mb-2" data-testid="signup-heading">
+          Create your account
+        </h1>
+        {next === '/register-vendor' && (
+          <p className="text-sm text-neutral-600 mb-5">
+            One account gets you a free vendor listing. Takes about 90 seconds after you sign up.
+          </p>
+        )}
+        {next !== '/register-vendor' && (
+          <p className="text-sm text-neutral-600 mb-5">Follow vendors and save your local market.</p>
+        )}
+
+        <AuthMethods
+          mode="signup"
+          next={next}
+          onPasswordSuccess={() => router.push(next && next.startsWith('/') ? next : '/')}
+          onMagicLinkSent={(email) => setMagicLinkEmail(email)}
+        />
+
+        <p className="mt-6 text-sm text-center text-neutral-600">
           Already have an account?{' '}
-          <Link href="/auth/login" className="underline">Log in</Link>
+          <Link href={loginHref} className="text-[--color-accent] underline">
+            Log in
+          </Link>
         </p>
       </div>
     </div>

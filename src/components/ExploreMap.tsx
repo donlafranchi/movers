@@ -76,7 +76,7 @@ export function ExploreMap({ vendors }: { vendors: Item[] }) {
             </div>
             <Link
               href={`/vendors/${selected.vendor.slug}`}
-              className="text-sm font-medium text-emerald-700 whitespace-nowrap"
+              className="text-sm font-medium text-[--color-accent] whitespace-nowrap"
             >
               View →
             </Link>

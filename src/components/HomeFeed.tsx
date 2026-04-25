@@ -11,6 +11,7 @@ import { useMarket } from './MarketContext'
 import { MarketPill } from './MarketPill'
 import { VendorCard } from './VendorCard'
 import { AuthCtaButtons } from './AuthCtaButtons'
+import { RecruitmentGrid } from './RecruitmentGrid'
 
 function supabase() {
   return createBrowserClient(
@@ -186,7 +187,7 @@ export function HomeFeed() {
           <Link
             href={`/vendors/${hero.slug}`}
             data-testid="hero-vendor"
-            className="block relative h-56 md:h-72 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-200 to-amber-200"
+            className="block relative h-56 md:h-72 rounded-2xl overflow-hidden bg-gradient-to-br from-[--color-accent-tint] to-amber-200"
           >
             {hero.cover_photo_url && (
               <img src={hero.cover_photo_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -215,20 +216,20 @@ export function HomeFeed() {
 
       {!isAuth && (
         <section className="px-3 md:px-6 mt-6" data-testid="signup-banner">
-          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-amber-50 overflow-hidden">
+          <div className="rounded-2xl border border-[--color-accent-tint] bg-gradient-to-br from-[--color-accent-tint] to-amber-50 overflow-hidden">
             <div className="p-4 md:p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[--color-accent]">
                 Join Main Street — free, always
               </p>
               <h2 className="mt-1 text-lg md:text-xl font-semibold text-neutral-900">
                 Help us build a market that actually serves Sacramento.
               </h2>
             </div>
-            <div className="grid md:grid-cols-2 gap-px bg-emerald-200">
+            <div className="grid md:grid-cols-2 gap-px bg-[--color-accent-tint]">
               <Link
                 href="/auth/signup"
                 data-testid="signup-banner-buyer"
-                className="block bg-white hover:bg-emerald-50 p-4 md:p-5 transition-colors"
+                className="block bg-white hover:bg-[--color-accent-tint] p-4 md:p-5 transition-colors"
               >
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">For shoppers</p>
                 <p className="mt-1 font-semibold text-neutral-900">Follow your makers →</p>
@@ -299,7 +300,7 @@ export function HomeFeed() {
             >
               <p className="font-medium text-neutral-900 line-clamp-1">{m.name}</p>
               <p className="text-xs text-neutral-600 mt-1">{m.city}, {m.state}</p>
-              <p className="text-xs text-emerald-700 mt-2 font-medium">
+              <p className="text-xs text-[--color-accent] mt-2 font-medium">
                 Next: {formatNextMarketDate(m.schedule_days)}
               </p>
             </Link>
@@ -330,6 +331,10 @@ export function HomeFeed() {
           Explore all categories →
         </Link>
       </div>
+
+      <div className="mt-10">
+        <RecruitmentGrid />
+      </div>
     </main>
   )
 }
@@ -340,7 +345,7 @@ function Rail({ title, seeAllHref, children }: { title: string; seeAllHref?: str
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
         {seeAllHref && (
-          <Link href={seeAllHref} className="text-sm text-emerald-700 font-medium">
+          <Link href={seeAllHref} className="text-sm text-[--color-accent] font-medium">
             See all →
           </Link>
         )}

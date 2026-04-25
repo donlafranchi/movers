@@ -11,6 +11,7 @@ import { WEEKDAYS } from '@/lib/types'
 import { useMarket } from './MarketContext'
 import { VendorCard } from './VendorCard'
 import { MarketPill } from './MarketPill'
+import { RecruitmentGrid } from './RecruitmentGrid'
 
 const ExploreMap = dynamic(() => import('./ExploreMap').then((m) => m.ExploreMap), { ssr: false })
 
@@ -21,7 +22,6 @@ function supabase() {
   )
 }
 
-const TRENDING = ['sourdough', 'honey', 'tomatoes', 'soap', 'eggs', 'flowers']
 
 interface VendorRow {
   vendor: Vendor
@@ -139,7 +139,7 @@ export function ExplorePage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               data-testid="search-input-desktop"
-              className="w-full pl-9 pr-9 py-2.5 text-sm border border-neutral-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full pl-9 pr-9 py-2.5 text-sm border border-neutral-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
             />
           </div>
           <div className="mt-3 flex gap-2 items-center">
@@ -169,7 +169,7 @@ export function ExplorePage() {
                 type="button"
                 onClick={() => setView('list')}
                 className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md ${
-                  view === 'list' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+                  view === 'list' ? 'bg-[--color-accent] text-white' : 'bg-neutral-100 text-neutral-700'
                 }`}
               >
                 <List size={14} /> List
@@ -178,7 +178,7 @@ export function ExplorePage() {
                 type="button"
                 onClick={() => setView('map')}
                 className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md ${
-                  view === 'map' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+                  view === 'map' ? 'bg-[--color-accent] text-white' : 'bg-neutral-100 text-neutral-700'
                 }`}
               >
                 <MapIcon size={14} /> Map
@@ -201,7 +201,7 @@ export function ExplorePage() {
             onClick={() => setView('list')}
             data-active={view === 'list'}
             className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-sm rounded-md ${
-              view === 'list' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+              view === 'list' ? 'bg-[--color-accent] text-white' : 'bg-neutral-100 text-neutral-700'
             }`}
           >
             <List size={14} /> List
@@ -211,7 +211,7 @@ export function ExplorePage() {
             onClick={() => setView('map')}
             data-active={view === 'map'}
             className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-sm rounded-md ${
-              view === 'map' ? 'bg-emerald-700 text-white' : 'bg-neutral-100 text-neutral-700'
+              view === 'map' ? 'bg-[--color-accent] text-white' : 'bg-neutral-100 text-neutral-700'
             }`}
           >
             <MapIcon size={14} /> Map
@@ -264,7 +264,7 @@ export function ExplorePage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               data-testid="search-input"
-              className="w-full pl-9 pr-9 py-2.5 text-sm border border-neutral-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full pl-9 pr-9 py-2.5 text-sm border border-neutral-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
             />
             {query && (
               <button
@@ -281,45 +281,7 @@ export function ExplorePage() {
       </div>
 
       {showEmptyState ? (
-        <section className="px-3 md:px-6 py-6 space-y-8">
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-700 mb-2">Trending searches</h2>
-            <div className="flex flex-wrap gap-2">
-              {TRENDING.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setQuery(t)}
-                  className="rounded-full bg-neutral-100 hover:bg-neutral-200 px-3 py-1 text-sm text-neutral-700"
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-700 mb-2">Popular categories</h2>
-            <div className="grid grid-cols-4 gap-2">
-              {CATEGORY_ORDER.map((slug) => {
-                const meta = CATEGORIES[slug]
-                return (
-                  <button
-                    key={slug}
-                    type="button"
-                    onClick={() => setCategoryFilter(slug)}
-                    className="aspect-square bg-neutral-50 hover:bg-neutral-100 rounded-xl flex flex-col items-center justify-center gap-1 p-2"
-                  >
-                    <span className="text-2xl">{meta.emoji}</span>
-                    <span className="text-[11px] font-medium text-neutral-700 text-center leading-tight">
-                      {meta.label}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </section>
+        <RecruitmentGrid />
       ) : view === 'list' ? (
         <section className="px-3 md:px-6 py-4">
           <p className="text-sm text-neutral-600 mb-3" data-testid="result-count">
@@ -335,7 +297,7 @@ export function ExplorePage() {
           {filtered.length === 0 && loaded ? (
             <div className="text-center py-12 text-sm text-neutral-600">
               <p>No vendors match your filters.</p>
-              <button onClick={clearAll} className="mt-2 text-emerald-700 underline">
+              <button onClick={clearAll} className="mt-2 text-[--color-accent] underline">
                 Clear filters
               </button>
             </div>
@@ -376,7 +338,7 @@ function FilterChip({ label, active, onClear, menuItems, placement = 'bottom' }:
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium border transition-colors whitespace-nowrap ${
-          active ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-neutral-700 border-neutral-300'
+          active ? 'bg-[--color-accent] text-white border-[--color-accent]' : 'bg-white text-neutral-700 border-neutral-300'
         }`}
       >
         {label}
@@ -407,7 +369,7 @@ function FilterChip({ label, active, onClear, menuItems, placement = 'bottom' }:
                   setOpen(false)
                 }}
                 className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 ${
-                  item.selected ? 'font-medium text-emerald-700' : 'text-neutral-700'
+                  item.selected ? 'font-medium text-[--color-accent]' : 'text-neutral-700'
                 }`}
               >
                 {item.label}

@@ -27,7 +27,7 @@ export function MarketPill() {
         data-testid="market-pill"
         className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 text-sm font-medium text-neutral-800 transition-colors"
       >
-        <MapPin size={14} className="text-emerald-700" />
+        <MapPin size={14} className="text-[--color-accent]" />
         {selectedMarket ? (
           <>
             <span className="text-neutral-500">Your Market:</span>

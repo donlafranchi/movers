@@ -101,28 +101,28 @@ export function SearchBar({
       {expanded && suggestions.length > 0 && (
         <div
           data-testid="search-suggestions"
-          className="mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg overflow-hidden"
+          className="mb-2 bg-white rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.12)] overflow-hidden border border-[--color-border]"
         >
           {suggestions.map((s, i) => (
             <button
               key={`${s.type}-${s.value}-${i}`}
               data-testid="search-suggestion"
               onClick={() => handleSuggestionClick(s)}
-              className="w-full text-left px-4 py-3 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 border-b last:border-b-0 border-zinc-100 dark:border-zinc-800"
+              className="w-full text-left px-4 py-3 text-sm hover:bg-[--color-surface] flex items-center gap-3 border-b last:border-b-0 border-[--color-border] transition-colors"
             >
-              <span className="text-zinc-400 text-xs w-5">
+              <span className="text-[--color-fg-muted] text-xs w-5">
                 {s.type === 'category' ? '🏷' : '📍'}
               </span>
-              <span>{s.label}</span>
+              <span className="text-[--color-fg]">{s.label}</span>
             </button>
           ))}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="relative">
-        <div className="flex items-center bg-white dark:bg-zinc-900 rounded-full shadow-lg px-4 py-3">
+        <div className="flex items-center bg-white rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.12)] border border-[--color-border] px-5 py-3.5">
           <svg
-            className="w-5 h-5 text-zinc-400 mr-2 shrink-0"
+            className="w-5 h-5 text-[--color-fg-muted] mr-3 shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -142,14 +142,14 @@ export function SearchBar({
             value={query}
             onChange={(e) => handleChange(e.target.value)}
             onFocus={handleFocus}
-            className="flex-1 bg-transparent outline-none text-sm"
+            className="flex-1 bg-transparent outline-none text-sm text-[--color-fg] placeholder:text-[--color-fg-muted]"
           />
           {hasSelection && (
             <button
               type="button"
               data-testid="search-clear"
               onClick={handleClear}
-              className="ml-2 text-zinc-400 hover:text-zinc-600"
+              className="ml-2 text-[--color-fg-muted] hover:text-[--color-fg] transition-colors"
               aria-label="Clear search"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

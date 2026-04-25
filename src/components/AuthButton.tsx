@@ -12,7 +12,7 @@ export function AuthButton() {
     return (
       <button
         onClick={() => signOut()}
-        className="text-sm px-3 py-1 rounded border"
+        className="btn-secondary !py-2 !px-4 text-sm"
         data-testid="signout-button"
       >
         Sign Out
@@ -23,7 +23,7 @@ export function AuthButton() {
   return (
     <Link
       href="/auth/login"
-      className="text-sm px-3 py-1 rounded border"
+      className="btn-primary !py-2 !px-4 text-sm"
       data-testid="signin-link"
     >
       Sign In

@@ -38,5 +38,25 @@ export function useAuth() {
     return { error }
   }, [])
 
-  return { user, loading, signUp, signIn, signOut }
+  const signInWithOtp = useCallback(async (email: string, next?: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const redirectTo = `${origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo },
+    })
+    return { data, error }
+  }, [])
+
+  const signInWithGoogle = useCallback(async (next?: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const redirectTo = `${origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    })
+    return { data, error }
+  }, [])
+
+  return { user, loading, signUp, signIn, signOut, signInWithOtp, signInWithGoogle }
 }

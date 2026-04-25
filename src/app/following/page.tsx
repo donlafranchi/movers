@@ -90,7 +90,7 @@ export default function FollowingPage() {
         <p className="mt-3 text-neutral-600 text-sm">Sign up to follow vendors and get updates when they&apos;re at the market.</p>
         <Link
           href="/auth/signup"
-          className="mt-4 inline-flex items-center justify-center bg-emerald-700 text-white rounded-md px-4 py-2 text-sm font-medium"
+          className="mt-4 inline-flex items-center justify-center bg-[--color-accent] text-white rounded-md px-4 py-2 text-sm font-medium"
         >
           Sign Up
         </Link>
@@ -109,7 +109,7 @@ export default function FollowingPage() {
       {loaded && rows.length === 0 && (
         <div className="px-4 md:px-6 mt-6 text-center text-sm text-neutral-600">
           <p>You&apos;re not following anyone yet.</p>
-          <Link href="/" className="mt-3 inline-block text-emerald-700 underline">
+          <Link href="/" className="mt-3 inline-block text-[--color-accent] underline">
             Browse vendors
           </Link>
         </div>
@@ -128,7 +128,7 @@ export default function FollowingPage() {
               className="bg-white border border-neutral-200 rounded-xl p-3 flex gap-3"
             >
               <Link href={`/vendors/${row.vendor.slug}`} className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-emerald-100 to-amber-100 flex items-center justify-center text-2xl">
+                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[--color-accent-tint] to-amber-100 flex items-center justify-center text-2xl">
                   {row.vendor.cover_photo_url ? (
                     <img src={row.vendor.cover_photo_url} alt="" className="w-full h-full object-cover rounded-lg" />
                   ) : (
@@ -144,7 +144,7 @@ export default function FollowingPage() {
                   <p className="text-xs text-neutral-600 truncate">{row.vendor.tagline}</p>
                 )}
                 {row.nextMarket && row.nextDate ? (
-                  <p className="text-xs text-emerald-700 mt-1 font-medium">
+                  <p className="text-xs text-[--color-accent] mt-1 font-medium">
                     Next: {row.nextMarket.name} · {formatNextMarketDate(row.nextMarket.schedule_days)}
                   </p>
                 ) : (

@@ -7,6 +7,7 @@ import { OwnershipBadge } from '@/components/OwnershipBadge'
 import { SupportButton } from '@/components/SupportButton'
 import { ReportForm } from '@/components/ReportForm'
 import { Toast } from '@/components/Toast'
+import { AuthGateModal } from '@/components/AuthGateModal'
 import { useAuth } from '@/hooks/useAuth'
 import type { Business } from '@/lib/types'
 
@@ -26,6 +27,8 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
   const [storyExpanded, setStoryExpanded] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  const [supportGateOpen, setSupportGateOpen] = useState(false)
+  const [reportGateOpen, setReportGateOpen] = useState(false)
 
   const hasStory = business.story && business.story.trim().length > 0
   const storyIsLong = hasStory && business.story!.length > STORY_TRUNCATE_LENGTH
@@ -36,9 +39,11 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
     setToastVisible(true)
   }, [business.slug])
 
+  const isExtractive = business.ownership_tier === 'pe-corporate'
+
   return (
     <div className="min-h-screen px-4 py-8">
-      <div className="mx-auto max-w-lg">
+      <div className="mx-auto max-w-lg" data-extractive={isExtractive ? 'true' : undefined}>
         <h1 data-testid="business-name" className="text-2xl font-bold">
           {business.name}
         </h1>
@@ -93,17 +98,18 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
           </div>
         )}
 
-        <div className="mt-4">
+        <div className="mt-4 hidden md:block">
           {user ? (
             <SupportButton businessId={business.id} userId={user.id} />
           ) : (
-            <Link
-              href="/auth/login"
+            <button
+              type="button"
+              onClick={() => setSupportGateOpen(true)}
               data-testid="sign-in-to-support"
-              className="inline-block text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 px-4 text-sm"
+              className="btn-primary"
             >
-              Sign in to support
-            </Link>
+              Support
+            </button>
           )}
         </div>
 
@@ -127,13 +133,14 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
               Report a Concern
             </button>
           ) : (
-            <Link
-              href="/auth/login"
+            <button
+              type="button"
+              onClick={() => setReportGateOpen(true)}
               data-testid="sign-in-to-report"
               className="flex-1 text-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 py-2 text-sm"
             >
-              Sign in to report
-            </Link>
+              Report a Concern
+            </button>
           )}
           <button
             data-testid="share-button"
@@ -164,6 +171,40 @@ export function BusinessListingPage({ business }: BusinessListingPageProps) {
           onClose={() => setReportOpen(false)}
         />
       )}
+
+      <AuthGateModal
+        open={supportGateOpen}
+        onClose={() => setSupportGateOpen(false)}
+        intent="support"
+        headline={`Sign up to support ${business.name}`}
+        subtext="Hearted businesses save to your profile and let owners see what you care about."
+      />
+      <AuthGateModal
+        open={reportGateOpen}
+        onClose={() => setReportGateOpen(false)}
+        intent="generic"
+        headline="Sign up to report a concern"
+        subtext="Reports are reviewed by the community — sign up so we can follow up if needed."
+      />
+
+      {/* Sticky mobile primary CTA */}
+      <div
+        className="md:hidden fixed inset-x-0 z-30 bg-white border-t border-neutral-200 px-4 py-3"
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+        data-testid="sticky-mobile-cta"
+      >
+        {user ? (
+          <SupportButton businessId={business.id} userId={user.id} />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSupportGateOpen(true)}
+            className="btn-primary w-full"
+          >
+            Support {business.name}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

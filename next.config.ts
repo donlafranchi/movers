@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     return [
       { source: '/business/:slug', destination: '/vendors/:slug', permanent: false },
       { source: '/map', destination: '/explore?view=map', permanent: false },
+      { source: '/register-business', destination: '/register-vendor', permanent: false },
+      { source: '/qr', destination: '/join', permanent: false },
     ]
   },
 };

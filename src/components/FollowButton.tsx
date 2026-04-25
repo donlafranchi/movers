@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { Heart } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { Toast } from './Toast'
+import { AuthGateModal } from './AuthGateModal'
 
 interface Props {
   vendorId: string
@@ -82,7 +83,7 @@ export function FollowButton({ vendorId, vendorName, size = 'md' }: Props) {
       : 'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium border transition-colors'
 
   const classes = following
-    ? `${base} bg-emerald-700 text-white border-emerald-700`
+    ? `${base} bg-[--color-accent] text-white border-[--color-accent]`
     : `${base} bg-white text-neutral-900 border-neutral-300 hover:border-neutral-400`
 
   return (
@@ -101,31 +102,13 @@ export function FollowButton({ vendorId, vendorName, size = 'md' }: Props) {
 
       <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} />
 
-      {showSignupPrompt && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-semibold">Sign up to follow {vendorName}</h3>
-            <p className="text-sm text-neutral-600 mt-2">
-              Get notified when they&apos;re at the market and keep track of makers you love.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <a
-                href="/auth/signup"
-                className="flex-1 inline-flex items-center justify-center rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white"
-              >
-                Sign Up
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowSignupPrompt(false)}
-                className="flex-1 inline-flex items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700"
-              >
-                Maybe Later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AuthGateModal
+        open={showSignupPrompt}
+        onClose={() => setShowSignupPrompt(false)}
+        intent="follow"
+        headline={`Sign up to follow ${vendorName}`}
+        subtext="Get notified when they're at the market and keep track of makers you love."
+      />
     </>
   )
 }

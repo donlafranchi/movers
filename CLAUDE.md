@@ -28,11 +28,19 @@ npm run eval
 
 **Framework:** Next.js (App Router)
 **Language:** TypeScript
-**Styling:** Tailwind CSS
+**Styling:** Tailwind CSS v4 (`@theme inline` tokens in `globals.css`)
 **Database:** Supabase (Postgres + Auth + Realtime)
 **Maps:** Mapbox GL JS
 **Testing:** Playwright (evals), Vitest (unit)
 **Deploy:** Vercel
+
+## Design System (non-negotiable)
+
+- **All UI uses DLS tokens** from `globals.css` — never hardcode colors, spacing, radii, or shadows. See [product/ui/design-language.md](../product/ui/design-language.md) for the full spec and CTA placement playbook.
+- **Component recipes:** `.btn-primary`, `.btn-secondary`, `.card`, `.card-hover`, `.chip`, `.chip-selected` — extend, don't duplicate.
+- **Ownership tier colors** are reserved for badges + map pins only (see `lib/map-config.ts` `PIN_COLORS`). Don't reuse them as general accent colors.
+- **Preserve `data-testid` and `data-extractive` attributes** — evals depend on them.
+- **CTAs:** primary action = solid Tide; secondary = ghost. Member-signup CTAs follow the placement patterns in the DLS.
 
 ## Directory Structure
 
