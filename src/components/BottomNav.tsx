@@ -43,9 +43,7 @@ export function BottomNav() {
                   onClick={handleClick(t.href, active)}
                   data-active={active ? 'true' : 'false'}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex h-12 w-12 items-center justify-center rounded-full shadow-md transition-colors ${
-                    active ? 'bg-[--color-accent] text-white' : 'bg-[--color-accent] text-white hover:bg-[--color-accent]'
-                  }`}
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent)] text-white shadow-md transition-colors hover:bg-[var(--color-accent-hover)]"
                   aria-label={t.label}
                 >
                   <Icon size={22} strokeWidth={2.25} />
@@ -88,12 +86,27 @@ export function TopNavDesktop() {
       <div className="flex items-center gap-4 text-sm">
         {TABS.map((t) => {
           const active = t.match(pathname ?? '/')
+          const Icon = t.icon
+          if (t.hero) {
+            return (
+              <Link
+                key={t.href}
+                href={t.href}
+                aria-label={t.label}
+                aria-current={active ? 'page' : undefined}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-accent)] text-white shadow-sm hover:bg-[var(--color-accent-hover)]"
+              >
+                <Icon size={18} strokeWidth={2.25} />
+              </Link>
+            )
+          }
           return (
             <Link
               key={t.href}
               href={t.href}
-              className={active ? 'text-[--color-accent] font-medium' : 'text-neutral-600 hover:text-neutral-900'}
+              className={`inline-flex items-center gap-1.5 ${active ? 'text-[var(--color-accent)] font-medium' : 'text-neutral-600 hover:text-neutral-900'}`}
             >
+              <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
               {t.label}
             </Link>
           )
