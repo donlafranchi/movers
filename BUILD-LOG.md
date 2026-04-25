@@ -34,9 +34,11 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T022 | Foundational Schema (events, bulletins, vendor analytics, follow soft-delete) | ✅ Complete |
 | T021 | Tide accent + CTA pattern rollout (auth-gate modal, sticky mobile CTA, recruitment panels) | ✅ Complete |
 | T023 | You page restructure (Saved/Following/Settings tabs, Your Market row, vendor mode link) | ✅ Complete |
+| T024 | Events-driven Home feed (EventCard, filter chips, pinned bulletins, lazy session generation) | ✅ Complete |
 
 ## Latest Commits
 
+- T024: Events-driven Home feed — EventCard, filter chips, pinned bulletins, lazy market_session generation
 - T023: You page restructure — Saved/Following/Settings tabs, Your Market row, vendor mode entry
 - T021: Tide accent + CTA patterns — AuthGateModal, two-track nav, sticky mobile CTA, recruitment panel on Home
 - T022: Foundational schema — events, vendor_bulletins, bulletin_deliveries, vendor_events, vendor_stats_daily; follows soft-delete
