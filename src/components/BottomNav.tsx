@@ -7,7 +7,7 @@ import { AuthCtaButtons } from './AuthCtaButtons'
 
 const TABS = [
   { href: '/', label: 'Home', icon: Home, match: (p: string) => p === '/' },
-  { href: '/explore', label: 'Explore', icon: Search, match: (p: string) => p.startsWith('/explore') || p === '/map', hero: true },
+  { href: '/explore', label: 'Explore', icon: Search, match: (p: string) => p.startsWith('/explore') || p === '/map' },
   { href: '/you', label: 'You', icon: User, match: (p: string) => p.startsWith('/you') || p.startsWith('/following') },
 ]
 
@@ -31,38 +31,22 @@ export function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-40 border-t border-neutral-200 bg-white md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <ul className="mx-auto flex h-16 w-[60%] max-w-[360px] items-stretch justify-between">
+      <ul className="mx-auto flex h-16 w-full max-w-[420px] items-stretch justify-around">
         {TABS.map((t) => {
           const active = t.match(pathname ?? '/')
           const Icon = t.icon
-          if (t.hero) {
-            return (
-              <li key={t.href} className="flex items-center">
-                <Link
-                  href={t.href}
-                  onClick={handleClick(t.href, active)}
-                  data-active={active ? 'true' : 'false'}
-                  aria-current={active ? 'page' : undefined}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent)] text-white shadow-md transition-colors hover:bg-[var(--color-accent-hover)]"
-                  aria-label={t.label}
-                >
-                  <Icon size={22} strokeWidth={2.25} />
-                </Link>
-              </li>
-            )
-          }
           return (
-            <li key={t.href} className="flex items-center">
+            <li key={t.href} className="flex flex-1 items-center">
               <Link
                 href={t.href}
                 onClick={handleClick(t.href, active)}
                 data-active={active ? 'true' : 'false'}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center gap-0.5 px-3 text-[11px] ${
-                  active ? 'text-[--color-accent]' : 'text-neutral-500'
+                className={`flex w-full flex-col items-center justify-center gap-0.5 px-3 text-[11px] ${
+                  active ? 'text-[var(--color-accent)]' : 'text-neutral-500'
                 }`}
               >
-                <Icon size={20} strokeWidth={active ? 2.25 : 1.75} fill={active ? 'currentColor' : 'none'} />
+                <Icon size={20} strokeWidth={active ? 2.25 : 1.75} />
                 <span className={active ? 'font-medium' : ''}>{t.label}</span>
               </Link>
             </li>
@@ -87,23 +71,11 @@ export function TopNavDesktop() {
         {TABS.map((t) => {
           const active = t.match(pathname ?? '/')
           const Icon = t.icon
-          if (t.hero) {
-            return (
-              <Link
-                key={t.href}
-                href={t.href}
-                aria-label={t.label}
-                aria-current={active ? 'page' : undefined}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-accent)] text-white shadow-sm hover:bg-[var(--color-accent-hover)]"
-              >
-                <Icon size={18} strokeWidth={2.25} />
-              </Link>
-            )
-          }
           return (
             <Link
               key={t.href}
               href={t.href}
+              aria-current={active ? 'page' : undefined}
               className={`inline-flex items-center gap-1.5 ${active ? 'text-[var(--color-accent)] font-medium' : 'text-neutral-600 hover:text-neutral-900'}`}
             >
               <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
