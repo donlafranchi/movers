@@ -47,6 +47,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T043 | Phase 0 — Action layer scaffold + `member.create` handler | ✅ Build complete; runtime eval pending |
 | T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ✅ Build complete; runtime eval pending |
 | T045 | Phase 1 — Locations spine + 3 children + events (`007_locations.sql`) | ✅ Build complete; runtime eval pending |
+| T046 | Phase 1 — Locations RLS fix-forward (`008_locations_owner_read.sql`) | ✅ Build complete; runtime eval pending |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 
@@ -83,7 +84,8 @@ Phase 1 lands the primitive tables (locations, members augmentation, items, grou
 
 **Phase 1 — Schema floor (in progress):**
 
-- **T045 — Locations spine + 3 children + events.** Build complete 2026-05-11. Single migration `007_locations.sql` carrying: spine (`public.locations`, all b1 + reserved columns, four indexes incl. GIST on geography, RLS public-read + owner-update, no INSERT/DELETE policies); three child tables (`location_permanent`, `location_recurring_temporary`, `location_areas`) with per-child public-read mirrors on the spine's discoverability via EXISTS subquery; `sync_area_centroid()` security-definer trigger function that writes `ST_Centroid(polygon)` to the spine's geography on insert/update of `location_areas`; `public.location_events` partitioned monthly with the b1 emitted + reserved event_kind enum, audit fields (`acting_member_id` NOT NULL, `via_delegation_id` reserved), composite PK `(id, created_at)`, two indexes, owner-read RLS, and `ensure_location_events_partition` / `rotate_location_events_partitions` rotation functions seeded with current + 2 future months. 46 file-shape assertions passing (sandbox plain-node). Numbering note: rebuild plan called this `008_*`; renumbered to `007_*` per the Phase 1 dependency reorder — see DEVIATIONS.md.
+- **T045 — Locations spine + 3 children + events.** Build complete 2026-05-11. Single migration `007_locations.sql` carrying: spine (`public.locations`, all b1 + reserved columns, four indexes incl. GIST on geography, RLS public-read + owner-update, no INSERT/DELETE policies); three child tables (`location_permanent`, `location_recurring_temporary`, `location_areas`) with per-child public-read mirrors on the spine's discoverability via EXISTS subquery; `sync_area_centroid()` security-definer trigger function that writes `ST_Centroid(polygon)` to the spine's geography on insert/update of `location_areas`; `public.location_events` partitioned monthly with the b1 emitted + reserved event_kind enum, audit fields (`acting_member_id` NOT NULL, `via_delegation_id` reserved), composite PK `(id, created_at)`, two indexes, owner-read RLS, and `ensure_location_events_partition` / `rotate_location_events_partitions` rotation functions seeded with current + 2 future months. 46 file-shape assertions passing (sandbox plain-node). Numbering note: rebuild plan called this `008_*`; renumbered to `007_*` per the Phase 1 dependency reorder — see DEVIATIONS.md. Commit `fab7fd9`.
+- **T046 — Locations RLS fix-forward.** Build complete 2026-05-11. Migration `008_locations_owner_read.sql` lands the three corrective items the T045 M2 code review surfaced: (a) new `locations_owner_read` RLS policy closing the matrix per `location.md` line 165 (owners can now SELECT their own private + soft-deleted-protected rows); (b) `idx_locations_geog` swapped from full to partial (`where deleted_at is null`) matching `location.md` line 136 so soft-deleted Locations don't bloat the proximity index; (c) `sync_area_centroid()` rewritten with `set search_path = public, extensions` for defensive robustness against Supabase's PostGIS-relocation pattern in newer distributions. 6 file-shape assertions passing (sandbox plain-node). The verification-ladder discussion from the same review is captured in `product/exploration/locally-owned-verification.md` and queued for `pipeline-product`.
 
 ## Remaining b1 MVP Work
 
@@ -97,7 +99,8 @@ See [planning/bundles/b1-mvp.md](../planning/bundles/b1-mvp.md) for the full MVP
 
 ## Latest Commits
 
-- T045: Locations spine + 3 children + events (Phase 1 — `007_locations.sql`)
+- T046: Locations RLS fix-forward (`008_locations_owner_read.sql`)
+- T045: Locations spine + 3 children + events (Phase 1 — `007_locations.sql`) — `fab7fd9`
 - T026: Vendor founder dashboard — `/you/vendor` Overview/Followers/Activity tabs, MetricCards + Sparklines, ListingHealth, Top Tasks aside, CSV export, migration 006 `rollup_vendor_stats_daily`
 - T025: Vendor bulletin compose + delivery — `/you/vendor/bulletins/*`, fan-out API, mute, open/unsubscribe primitives, migration 005
 - T024: Events-driven Home feed — `EventCard`, filter chips, pinned bulletin section, lazy `market_session` generation, click telemetry
