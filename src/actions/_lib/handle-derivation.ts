@@ -17,9 +17,12 @@ export function deriveHandleFromEmail(email: string): string {
   const localPart = email.split('@')[0] ?? 'user'
   let h = localPart
     .toLowerCase()
-    .replace(/[._\s]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
+    // Any run of non-alnum-hyphen characters (dots, underscores, spaces, `+`,
+    // anything else) collapses to a single hyphen. Preserves existing hyphens.
+    .replace(/[^a-z0-9-]+/g, '-')
+    // Collapse runs of hyphens that may now be adjacent.
     .replace(/-+/g, '-')
+    // Trim leading/trailing hyphens.
     .replace(/^-+|-+$/g, '')
 
   if (h.length < 4) {

@@ -88,9 +88,12 @@ interface Violation {
 
 function listTsFiles(): string[] {
   try {
-    // Use git ls-files for speed and to respect .gitignore. Falls back to
-    // a manual walk if git isn't available.
-    const out = execSync('git ls-files "*.ts" "*.tsx"', {
+    // Use git ls-files for speed and to respect .gitignore. `--cached` =
+    // tracked, `--others --exclude-standard` = untracked + not-gitignored.
+    // This catches new files developers haven't staged yet — important
+    // because the rule applies to all code, not just committed code.
+    // Falls back to a manual walk if git isn't available.
+    const out = execSync('git ls-files --cached --others --exclude-standard "*.ts" "*.tsx"', {
       cwd: ROOT,
       encoding: 'utf8',
     })
