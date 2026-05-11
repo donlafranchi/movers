@@ -1,6 +1,6 @@
 # BUILD-LOG — mainstreetmarket/web
 
-Last updated: 2026-04-25
+Last updated: 2026-05-10
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -41,6 +41,24 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T025 | Vendor Bulletin Compose + Delivery (T1) | ✅ Complete |
 | T026 | Vendor Founder Dashboard (T1) | ✅ Complete |
 | T027 | Event Surfacing on Profiles | ⏸️ Deferred (b2) |
+| T028–T040 | STALE — pre-rebuild migration tickets | ⛔ STALE-banned 2026-05-09 |
+| T041 | Phase 0 — Postgres extensions + embedding tables | ✅ Build complete; runtime eval pending |
+| T042 | Phase 0 — Members + member_events floor + system Member | ⬜ Open |
+| T043 | Phase 0 — Action layer scaffold + `member.create` handler | ⬜ Open |
+| T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ⬜ Open |
+
+## Rebuild on Primitives — Phase 0 (AI-native floor)
+
+The b1 marketplace shipped T001–T026; T027 deferred. The 2026-05-10 PM decision to rebuild on Person / Item / Location / Group primitives supersedes the prior 7-phase migration plan with a 4-phase clean-slate rebuild. T028–T040 were drafted against the prior plan and are STALE-banned. T041–T044 are the Phase 0 ticket set per [`/notes/migration-to-primitives.md`](../notes/migration-to-primitives.md).
+
+**Phase 0 — AI-native floor (4 tickets):**
+
+- **T041 — Postgres extensions + embedding tables.** Build complete 2026-05-10. Wiped six legacy migrations (001–006), wrote three Phase 0 migrations (001_extensions, 004_item_embeddings, 005_member_embeddings). 15 file-shape assertions passing. Runtime eval pending (`supabase db reset` + `web/evals/phase-0/floor.spec.ts`).
+- **T042 — Members + member_events floor + system Member.** Open. Depends on T041.
+- **T043 — Action layer scaffold + `member.create` handler.** Open. Depends on T042.
+- **T044 — Supabase Auth signup hook.** Open. Depends on T043. Closes Phase 0 exit criterion.
+
+After Phase 0 closes, Phase 1 re-ticketing (T045+) opens against the rebuild plan's full schema floor.
 
 ## Remaining b1 MVP Work
 
