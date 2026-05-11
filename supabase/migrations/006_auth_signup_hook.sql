@@ -132,5 +132,8 @@ create trigger on_auth_user_created
 comment on function public.handle_new_auth_user is
   'T044 — Fires on auth.users insert. Reads URL + HMAC secret from vault.decrypted_secrets (names auth_signup_hook_url / auth_signup_hook_secret). HMAC-SHA256-signs the payload and POSTs to the URL via pg_net (async). The route invokes member.create with the new auth user id; idempotent on retry via members.id unique constraint (409 on duplicate). Failures visible in net._http_response.';
 
-comment on trigger on_auth_user_created on auth.users is
-  'T044 — Bridges Supabase Auth signup to the rebuild action layer. Phase 0 exit criterion: new auth user → members row + member.created event with acting_member_id = new id.';
+-- COMMENT ON TRIGGER on auth.users would require ownership of auth.users,
+-- which the postgres role does not have (auth.users is owned by
+-- supabase_auth_admin). The function comment above carries the
+-- documentation; the trigger itself is self-describing via its name and
+-- create-trigger DDL.
