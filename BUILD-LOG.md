@@ -43,7 +43,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T027 | Event Surfacing on Profiles | ⏸️ Deferred (b2) |
 | T028–T040 | STALE — pre-rebuild migration tickets | ⛔ STALE-banned 2026-05-09 |
 | T041 | Phase 0 — Postgres extensions + embedding tables | ✅ Build complete; runtime eval pending |
-| T042 | Phase 0 — Members + member_events floor + system Member | ⬜ Open |
+| T042 | Phase 0 — Members + member_events floor + system Member | ✅ Build complete; runtime eval pending |
 | T043 | Phase 0 — Action layer scaffold + `member.create` handler | ⬜ Open |
 | T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ⬜ Open |
 
@@ -53,8 +53,8 @@ The b1 marketplace shipped T001–T026; T027 deferred. The 2026-05-10 PM decisio
 
 **Phase 0 — AI-native floor (4 tickets):**
 
-- **T041 — Postgres extensions + embedding tables.** Build complete 2026-05-10. Wiped six legacy migrations (001–006), wrote three Phase 0 migrations (001_extensions, 004_item_embeddings, 005_member_embeddings). 15 file-shape assertions passing. Runtime eval pending (`supabase db reset` + `web/evals/phase-0/floor.spec.ts`).
-- **T042 — Members + member_events floor + system Member.** Open. Depends on T041.
+- **T041 — Postgres extensions + embedding tables.** Build complete 2026-05-10. Wiped six legacy migrations (001–006), wrote three Phase 0 migrations (001_extensions, 004_item_embeddings, 005_member_embeddings). 15 file-shape assertions passing. Runtime verified locally: extensions + tables present in Supabase. Eval-run pending T043+ test helpers.
+- **T042 — Members + member_events floor + system Member.** Build complete 2026-05-10. Three migrations: `002_members_floor.sql` (b1 T1 column set + RLS + partial indexes + updated_at trigger), `002a_member_events.sql` (monthly-partitioned event log + audit fields + rotation functions), `002b_system_member.sql` (system Member row + self-bootstrap event). `web/src/lib/system-member.ts` mirrors the SQL constants. 49 file-shape assertions passing. Runtime eval pending.
 - **T043 — Action layer scaffold + `member.create` handler.** Open. Depends on T042.
 - **T044 — Supabase Auth signup hook.** Open. Depends on T043. Closes Phase 0 exit criterion.
 
