@@ -7,35 +7,56 @@
 -- function → pg_net.http_post fire-and-forget to /api/internal/auth-signup
 -- → that Next.js route invokes the member.create action handler.
 --
+-- Configuration via Supabase Vault (NOT custom GUCs — Supabase restricts
+-- which GUC prefixes the postgres role can set; ALTER DATABASE on
+-- `app.*` is permission-denied). Vault is the documented Supabase pattern
+-- for trigger-readable secrets.
+--
+-- After this migration applies, the user populates Vault once (Studio's SQL
+-- Editor or psql — see the leading comment in the function below for the
+-- exact statements). The trigger function reads via
+-- vault.decrypted_secrets at fire time.
+--
 -- pg_net is async by default; the trigger returns immediately. Failures
 -- (route unreachable, signature mismatch, handler error) are visible in
--- pg_net's response table (net._http_response). A nightly reconciliation
--- job (Phase 1+) sweeps auth.users for rows without a corresponding members
--- row and replays member.create. Not a Phase 0 deliverable.
---
--- Per T044 Notes: chose Postgres-trigger-via-pg_net over Edge Function
--- because it keeps the floor entirely in the DB and avoids the supabase-CLI
--- ↔ Edge-Function deploy coupling. Cost: ~50–100ms of signup latency.
+-- net._http_response. A nightly reconciliation job (Phase 1+) sweeps
+-- auth.users for rows without a corresponding members row and replays
+-- member.create. Not a Phase 0 deliverable.
 
 create extension if not exists pg_net;
 create extension if not exists pgcrypto;
+-- vault is pre-installed on Supabase; this is defensive.
+create extension if not exists supabase_vault;
 
--- Configuration GUCs. Set these on the DB so the trigger function can read
--- them. For local Supabase, run:
+------------------------------------------------------------
+-- Trigger function — reads URL + secret from Vault.
+------------------------------------------------------------
+-- ONE-TIME SETUP after `supabase db reset` (run in Studio SQL Editor):
 --
---   alter database postgres set app.auth_signup_hook_url
---     = 'http://host.docker.internal:3000/api/internal/auth-signup';
---   alter database postgres set app.auth_signup_hook_secret
---     = '<a secret you also set in web/.env.local as AUTH_SIGNUP_HOOK_SECRET>';
+--   select vault.create_secret(
+--     'http://host.docker.internal:3000/api/internal/auth-signup',
+--     'auth_signup_hook_url',
+--     'URL the post-signup hook POSTs to (Phase 0 — T044)'
+--   );
 --
--- For production, alter the linked DB with the deployed URL + a rotated
--- secret. Rotate quarterly per ADR-9.
+--   select vault.create_secret(
+--     'local-dev-secret-must-be-at-least-16-chars-long',
+--     'auth_signup_hook_secret',
+--     'HMAC-SHA256 signing key for the auth-signup hook (Phase 0 — T044)'
+--   );
+--
+-- For production: rotate the secret quarterly per ADR-9. The URL value can
+-- be updated via:
+--
+--   update vault.secrets set secret = '<new value>' where name = 'auth_signup_hook_url';
+--
+-- Match AUTH_SIGNUP_HOOK_SECRET in web/.env.local to the Vault secret's value.
 
 create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, extensions, net
+set search_path = public, extensions, net, vault
 as $$
 declare
   payload         jsonb;
@@ -45,10 +66,27 @@ declare
   secret          text;
   request_id      bigint;
 begin
-  -- Skip system-internal auth.users rows (none expected at Phase 0, but
-  -- defensive). The system Member already exists; we do not want to
-  -- double-bootstrap it via the hook.
+  -- Skip system-internal auth.users rows (defensive). The system Member
+  -- already exists; we do not double-bootstrap via the hook.
   if new.id = '00000000-0000-0000-0000-000000000001'::uuid then
+    return new;
+  end if;
+
+  -- Read configuration from Vault.
+  select decrypted_secret into secret
+    from vault.decrypted_secrets
+    where name = 'auth_signup_hook_secret'
+    limit 1;
+
+  select decrypted_secret into signup_url
+    from vault.decrypted_secrets
+    where name = 'auth_signup_hook_url'
+    limit 1;
+
+  if secret is null or secret = '' or signup_url is null or signup_url = '' then
+    raise warning
+      'auth-signup hook not configured (vault secrets auth_signup_hook_url / auth_signup_hook_secret missing). Member row for auth user % will NOT be auto-created. Populate vault.secrets and replay via reconciliation.',
+      new.id;
     return new;
   end if;
 
@@ -58,22 +96,9 @@ begin
     'email',            new.email,
     'handleSuggestion', coalesce(new.raw_user_meta_data ->> 'handle_suggestion', null)
   );
-  -- Canonical JSON string for signing. Postgres jsonb::text gives a stable
-  -- representation; the route signs the body bytes it receives, so we must
-  -- use the same representation as what is sent.
+  -- Canonical JSON string for signing. The route signs the body bytes it
+  -- receives, so we must use the same representation as what is sent.
   payload_str := payload::text;
-
-  -- Read config from GUCs. `missing_ok := true` returns null instead of
-  -- raising when unset; the trigger then no-ops with a warning.
-  secret := current_setting('app.auth_signup_hook_secret', true);
-  signup_url := current_setting('app.auth_signup_hook_url', true);
-
-  if secret is null or secret = '' or signup_url is null or signup_url = '' then
-    raise warning
-      'auth-signup hook not configured (app.auth_signup_hook_url / app.auth_signup_hook_secret missing). Member row for auth user % will NOT be auto-created. Set the GUCs and replay via reconciliation.',
-      new.id;
-    return new;
-  end if;
 
   -- HMAC-SHA256 the payload bytes with the secret. extensions.hmac is from
   -- pgcrypto; output is bytea, encode to hex.
@@ -105,7 +130,7 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_auth_user();
 
 comment on function public.handle_new_auth_user is
-  'T044 — Fires on auth.users insert. HMAC-signs a payload with app.auth_signup_hook_secret and POSTs to app.auth_signup_hook_url. Async via pg_net. The route invokes member.create with the new auth user id; idempotent on retry via members.id unique constraint (409 on duplicate). Failures visible in net._http_response.';
+  'T044 — Fires on auth.users insert. Reads URL + HMAC secret from vault.decrypted_secrets (names auth_signup_hook_url / auth_signup_hook_secret). HMAC-SHA256-signs the payload and POSTs to the URL via pg_net (async). The route invokes member.create with the new auth user id; idempotent on retry via members.id unique constraint (409 on duplicate). Failures visible in net._http_response.';
 
 comment on trigger on_auth_user_created on auth.users is
   'T044 — Bridges Supabase Auth signup to the rebuild action layer. Phase 0 exit criterion: new auth user → members row + member.created event with acting_member_id = new id.';

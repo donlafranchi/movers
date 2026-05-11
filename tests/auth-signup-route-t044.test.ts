@@ -20,9 +20,10 @@ describe('T044 — 006_auth_signup_hook.sql', () => {
   const sql = readFileSync(resolve(MIGRATIONS_DIR, '006_auth_signup_hook.sql'), 'utf8')
   const stripped = sql.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
 
-  it('enables pg_net and pgcrypto extensions', () => {
+  it('enables pg_net, pgcrypto, and supabase_vault extensions', () => {
     expect(stripped).toMatch(/create extension if not exists pg_net/i)
     expect(stripped).toMatch(/create extension if not exists pgcrypto/i)
+    expect(stripped).toMatch(/create extension if not exists supabase_vault/i)
   })
 
   it('defines handle_new_auth_user() with security definer', () => {
@@ -30,9 +31,12 @@ describe('T044 — 006_auth_signup_hook.sql', () => {
     expect(stripped).toMatch(/security definer/i)
   })
 
-  it('reads configuration from app.auth_signup_hook_url and app.auth_signup_hook_secret GUCs', () => {
-    expect(stripped).toMatch(/current_setting\(\s*'app\.auth_signup_hook_secret'/i)
-    expect(stripped).toMatch(/current_setting\(\s*'app\.auth_signup_hook_url'/i)
+  it('reads configuration from vault.decrypted_secrets (not custom GUCs)', () => {
+    expect(stripped).toMatch(/from\s+vault\.decrypted_secrets/i)
+    expect(stripped).toMatch(/name\s*=\s*'auth_signup_hook_secret'/i)
+    expect(stripped).toMatch(/name\s*=\s*'auth_signup_hook_url'/i)
+    // Defensive: no leftover ALTER DATABASE / app.* GUC reads from the old design.
+    expect(stripped).not.toMatch(/current_setting\(\s*'app\./i)
   })
 
   it('HMAC-SHA256 signs the payload with extensions.hmac', () => {
