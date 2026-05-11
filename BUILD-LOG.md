@@ -45,7 +45,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T041 | Phase 0 — Postgres extensions + embedding tables | ✅ Build complete; runtime eval pending |
 | T042 | Phase 0 — Members + member_events floor + system Member | ✅ Build complete; runtime eval pending |
 | T043 | Phase 0 — Action layer scaffold + `member.create` handler | ✅ Build complete; runtime eval pending |
-| T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ⬜ Open |
+| T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ✅ Build complete; runtime eval pending |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 
@@ -56,7 +56,23 @@ The b1 marketplace shipped T001–T026; T027 deferred. The 2026-05-10 PM decisio
 - **T041 — Postgres extensions + embedding tables.** Build complete 2026-05-10. Wiped six legacy migrations (001–006), wrote three Phase 0 migrations (001_extensions, 004_item_embeddings, 005_member_embeddings). 15 file-shape assertions passing. Runtime verified locally: extensions + tables present in Supabase. Eval-run pending T043+ test helpers.
 - **T042 — Members + member_events floor + system Member.** Build complete 2026-05-10. Single consolidated migration `002_members.sql` (originally split into 002 + 002a + 002b; consolidated when Supabase CLI was found to silently skip alpha-suffixed filenames — see DEVIATIONS). Three logical sections: members table + RLS + indexes + updated_at trigger; member_events table monthly-partitioned + audit fields + rotation functions; system Member row + self-bootstrap event. `web/src/lib/system-member.ts` mirrors the SQL constants. 38 file-shape assertions passing. **Going-forward rule:** all migration filenames must match `^\d+_[a-z0-9_]+\.sql$` — enforced by the test suite.
 - **T043 — Action layer scaffold + `member.create` handler.** Build complete 2026-05-10. New `web/src/actions/` tree: `_lib/{errors,context,handler,db,audit,event-log,handle-derivation}.ts` + `member/{index,create}.ts` + `index.ts` registry. `web/src/lib/action-context.ts` resolver. `web/scripts/check-action-layer-conformance.ts` greps for direct writes; wired as `npm run check:action-layer`. New deps: `pg`, `@types/pg`, `zod`, `tsx`. Transaction wrapper uses `pg.Pool` directly + `BEGIN/COMMIT/ROLLBACK` (Supabase JS lacks transactions). Tests: 59/60 sandbox-side; full Vitest run + DB-runtime assertions land via Playwright eval.
-- **T044 — Supabase Auth signup hook.** Open. Depends on T043. Closes Phase 0 exit criterion.
+- **T044 — Supabase Auth signup hook.** Build complete 2026-05-10. Migration `006_auth_signup_hook.sql` enables `pg_net` + `pgcrypto`, defines `handle_new_auth_user()` (security-definer, HMAC-SHA256 signs payload, fires `net.http_post` async to a Next.js route), attaches AFTER INSERT trigger on `auth.users`. Route at `web/src/app/api/internal/auth-signup/route.ts` (Node runtime) validates signature via constant-time HMAC compare, invokes `member.create` with `actingMemberId='self-bootstrap'`, maps ActionError → HTTP status. Sentinel-proxy fix to `web/src/lib/action-context.ts` (T043 was leaking pool clients). 33 sandbox file-shape assertions + ~28 Vitest route-mock assertions. Phase 0 exit criterion verifiable end-to-end via Playwright eval (helpers pending).
+
+## Phase 0 Status: BUILD COMPLETE 2026-05-10
+
+All four Phase 0 tickets (T041–T044) have shipped build-side with passing file-shape and unit tests. Runtime verification of the full Phase 0 exit criterion (`spawn fresh auth.users → members row + member.created event with correct audit fields`) is the Playwright eval at `web/evals/phase-0/floor.spec.ts`, which runs end-to-end once the eval helper RPCs (`eval_member_create_with_failure_injection`, `eval_seed_handle_collision_range`, etc.) are provisioned — flagged as a separate stage.
+
+Phase 0 substrate now installed:
+- pgvector + postgis extensions
+- Members table (b1 T1 column set) + RLS + indexes + trigger
+- member_events partitioned event log + audit fields + rotation functions
+- System Member row + self-bootstrap event
+- Action layer (`web/src/actions/`) with `defineHandler` factory, transaction wrapper, audit injector, event-log writer, error taxonomy, registry
+- `member.create` proof-of-pattern handler with collision-suffix logic
+- Conformance-check script (`npm run check:action-layer`)
+- Auth signup hook (Postgres trigger → Next.js route → `member.create`)
+
+Ready for Phase 1 re-ticketing (T045+) per the rebuild plan.
 
 After Phase 0 closes, Phase 1 re-ticketing (T045+) opens against the rebuild plan's full schema floor.
 

@@ -7,32 +7,35 @@
 // actingMemberId is the 'self-bootstrap' sentinel until member.create
 // resolves it to the freshly-inserted member id.
 
+import type { PoolClient } from 'pg'
 import { makeContext, type ActionContext, type ActingMemberId } from '@/actions/_lib/context'
-import { getPool } from '@/actions/_lib/db'
 
 export interface ResolveContextOptions {
   actingMemberId: ActingMemberId
   viaDelegationId?: string | null
 }
 
-// Resolve an action context for a route invocation. The caller is
-// responsible for passing the actingMemberId (resolved from
-// auth.uid() on a normal route, or 'self-bootstrap' on the auth-signup
-// hook).
+// Sentinel PoolClient that throws on any access. Handlers MUST go through
+// withTransaction which provides a real transaction-bound client; the
+// route-layer ctx.db is a placeholder for type safety, never read.
+const SENTINEL_DB: PoolClient = new Proxy({} as PoolClient, {
+  get(_target, prop) {
+    throw new Error(
+      `ActionContext.db: handlers must use withTransaction; the route-layer db is a sentinel (attempted access: ${String(prop)})`,
+    )
+  },
+})
+
+// Resolve an action context for a route invocation. The caller passes the
+// actingMemberId (resolved from auth.uid() on a normal route, or
+// 'self-bootstrap' on the auth-signup hook).
 //
-// Note: the context returned here is NOT yet bound to a transaction —
-// withTransaction inside the handler body acquires the transaction-bound
-// client. This resolver only sets up the per-call metadata.
-export async function resolveActionContext(
-  opts: ResolveContextOptions,
-): Promise<ActionContext> {
-  // The db field is overwritten by withTransaction. We pass a placeholder
-  // client from the pool here; handlers that don't open a transaction
-  // (read-only handlers, none yet at b1) use this client directly.
-  const client = await getPool().connect()
+// Note: ctx.db is a sentinel — handlers MUST use withTransaction. This
+// keeps the route-layer free of pool-client lifecycle concerns.
+export function resolveActionContext(opts: ResolveContextOptions): ActionContext {
   return makeContext({
     actingMemberId: opts.actingMemberId,
     viaDelegationId: opts.viaDelegationId ?? null,
-    db: client,
+    db: SENTINEL_DB,
   })
 }
