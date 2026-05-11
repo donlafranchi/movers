@@ -44,7 +44,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T028–T040 | STALE — pre-rebuild migration tickets | ⛔ STALE-banned 2026-05-09 |
 | T041 | Phase 0 — Postgres extensions + embedding tables | ✅ Build complete; runtime eval pending |
 | T042 | Phase 0 — Members + member_events floor + system Member | ✅ Build complete; runtime eval pending |
-| T043 | Phase 0 — Action layer scaffold + `member.create` handler | ⬜ Open |
+| T043 | Phase 0 — Action layer scaffold + `member.create` handler | ✅ Build complete; runtime eval pending |
 | T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ⬜ Open |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
@@ -55,7 +55,7 @@ The b1 marketplace shipped T001–T026; T027 deferred. The 2026-05-10 PM decisio
 
 - **T041 — Postgres extensions + embedding tables.** Build complete 2026-05-10. Wiped six legacy migrations (001–006), wrote three Phase 0 migrations (001_extensions, 004_item_embeddings, 005_member_embeddings). 15 file-shape assertions passing. Runtime verified locally: extensions + tables present in Supabase. Eval-run pending T043+ test helpers.
 - **T042 — Members + member_events floor + system Member.** Build complete 2026-05-10. Single consolidated migration `002_members.sql` (originally split into 002 + 002a + 002b; consolidated when Supabase CLI was found to silently skip alpha-suffixed filenames — see DEVIATIONS). Three logical sections: members table + RLS + indexes + updated_at trigger; member_events table monthly-partitioned + audit fields + rotation functions; system Member row + self-bootstrap event. `web/src/lib/system-member.ts` mirrors the SQL constants. 38 file-shape assertions passing. **Going-forward rule:** all migration filenames must match `^\d+_[a-z0-9_]+\.sql$` — enforced by the test suite.
-- **T043 — Action layer scaffold + `member.create` handler.** Open. Depends on T042.
+- **T043 — Action layer scaffold + `member.create` handler.** Build complete 2026-05-10. New `web/src/actions/` tree: `_lib/{errors,context,handler,db,audit,event-log,handle-derivation}.ts` + `member/{index,create}.ts` + `index.ts` registry. `web/src/lib/action-context.ts` resolver. `web/scripts/check-action-layer-conformance.ts` greps for direct writes; wired as `npm run check:action-layer`. New deps: `pg`, `@types/pg`, `zod`, `tsx`. Transaction wrapper uses `pg.Pool` directly + `BEGIN/COMMIT/ROLLBACK` (Supabase JS lacks transactions). Tests: 59/60 sandbox-side; full Vitest run + DB-runtime assertions land via Playwright eval.
 - **T044 — Supabase Auth signup hook.** Open. Depends on T043. Closes Phase 0 exit criterion.
 
 After Phase 0 closes, Phase 1 re-ticketing (T045+) opens against the rebuild plan's full schema floor.
