@@ -27,6 +27,22 @@
 --        + Explicit system-Member backfill row — bootstrap trigger fires only
 --          on future inserts; the row inserted in 002_members.sql needs an
 --          explicit backfill.
+--
+-- Trigger ordering on `public.members` AFTER INSERT (load-bearing — do not
+-- reorder without re-reading this header):
+--
+--   1. `members_create_privacy_defaults` (regular AFTER INSERT row trigger,
+--      not deferrable) runs immediately after each row insert. By end of
+--      statement, the matching `member_privacy` row exists.
+--   2. `members_assert_id_in_auth_users` (CONSTRAINT trigger, DEFERRABLE
+--      INITIALLY DEFERRED) runs at COMMIT. If it raises, the entire
+--      transaction rolls back — including the privacy row created above.
+--      This is the desired behavior: an invalid Member never gets a
+--      privacy row left behind.
+--
+-- The two triggers MUST stay on the same table so they participate in the
+-- same transaction. Splitting the constraint trigger to a different table
+-- would break the rollback chain.
 --   3. public.member_handle_history: T2 placeholder schema. No bootstrap
 --      trigger; the action handler `member.handle.set` (T2) writes rows.
 
@@ -110,7 +126,8 @@ create policy member_privacy_owner_read on public.member_privacy
 
 create policy member_privacy_owner_update on public.member_privacy
   for update
-  using (member_id = auth.uid());
+  using (member_id = auth.uid())
+  with check (member_id = auth.uid());
 
 -- Bootstrap trigger: every new public.members row gets a member_privacy row
 -- with defaults. Idempotent via on conflict. Action handler member.create
@@ -132,6 +149,9 @@ $$;
 create trigger members_create_privacy_defaults
   after insert on public.members
   for each row execute function public.create_member_privacy_defaults();
+
+comment on function public.create_member_privacy_defaults() is
+  'Bootstrap trigger that creates a default member_privacy row for every new public.members insert. SECURITY DEFINER so it bypasses RLS (member_privacy has no INSERT policy — action-layer-only). Idempotent via on conflict. Pairs with the system-Member backfill below for the pre-trigger row.';
 
 -- System-Member backfill. The bootstrap trigger only fires on future inserts;
 -- the system-Member row inserted in 002_members.sql predates this trigger

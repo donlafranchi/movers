@@ -160,7 +160,7 @@ describe('T047 — 009_members_phase1.sql: member_privacy table', () => {
       /create policy\s+member_privacy_owner_read[\s\S]+for select[\s\S]+member_id\s*=\s*auth\.uid\(\)/i,
     )
     expect(sql).toMatch(
-      /create policy\s+member_privacy_owner_update[\s\S]+for update[\s\S]+member_id\s*=\s*auth\.uid\(\)/i,
+      /create policy\s+member_privacy_owner_update[\s\S]+for update[\s\S]+using\s*\(\s*member_id\s*=\s*auth\.uid\(\)\s*\)[\s\S]+with check\s*\(\s*member_id\s*=\s*auth\.uid\(\)\s*\)/i,
     )
     expect(sql).not.toMatch(/policy[^;]+member_privacy[^;]+for insert/i)
     expect(sql).not.toMatch(/policy[^;]+member_privacy[^;]+for delete/i)
@@ -186,6 +186,12 @@ describe('T047 — 009_members_phase1.sql: bootstrap trigger', () => {
   it('attaches the bootstrap trigger AFTER INSERT on public.members', () => {
     expect(sql).toMatch(
       /create trigger\s+members_create_privacy_defaults\s+after insert\s+on\s+public\.members\s+for each row\s+execute (?:procedure|function)\s+public\.create_member_privacy_defaults/i,
+    )
+  })
+
+  it('documents the bootstrap function with comment on function', () => {
+    expect(sql).toMatch(
+      /comment on function\s+public\.create_member_privacy_defaults\(\)\s+is/i,
     )
   })
 
