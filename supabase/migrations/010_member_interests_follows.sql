@@ -13,10 +13,16 @@
 --      without migrations.
 --   2. public.member_follows — Loop 8 substrate. Soft-unfollow via
 --      unfollowed_at; partial indexes cover the two follower-direction
---      surfaces. Privacy-gated visibility: a row (A, B) is publicly
---      readable only when A.show_following = true AND B.show_followers
---      = true. Members always see their own follows regardless of
---      privacy (member_follows_self_read).
+--      surfaces. Public-by-default visibility per the 2026-05-11 product
+--      decision (recorded in DEVIATIONS): follow graph is community-fabric,
+--      not sensitive data — the privacy work that ADR-9 targets lands on
+--      member_location_affinities (T049) where `lives`/`works` affinity
+--      rows are owner-only and cross-Member computation goes through
+--      SECURITY DEFINER functions per member.md lines 295-298. The
+--      member_privacy.show_following / show_followers columns from T047
+--      remain as reserved substrate; the action layer / b2 surface
+--      composer may wire them in later if real-Member feedback warrants
+--      a per-Member opt-out, but the schema does not enforce them at b1.
 
 ------------------------------------------------------------
 -- 1. public.member_interests
@@ -63,46 +69,31 @@ create table public.member_follows (
   check (follower_member_id <> followed_member_id)
 );
 
--- "Who follows X" surface — Loop 8.
+-- "Who follows X" surface — Loop 8. The PK leads with follower_member_id,
+-- so it doesn't help reverse lookups. This is the load-bearing new index.
 create index idx_follows_followed_active
   on public.member_follows (followed_member_id)
   where unfollowed_at is null;
 
--- "Who does X follow" surface.
+-- "Who does X follow" surface. The PK (follower_member_id, followed_member_id)
+-- can leading-column scan by follower_member_id, but only against the full
+-- table. This partial index keeps active-follows scans lean and cache-friendly
+-- by skipping soft-unfollowed rows entirely.
 create index idx_follows_follower_active
   on public.member_follows (follower_member_id)
   where unfollowed_at is null;
 
 alter table public.member_follows enable row level security;
 
--- A Member always sees their own follow relationships in both directions.
--- Bypasses the privacy-gating below.
-create policy member_follows_self_read on public.member_follows
-  for select
-  using (
-    follower_member_id = auth.uid()
-    or followed_member_id = auth.uid()
-  );
-
--- Public visibility requires BOTH endpoints to opt in via member_privacy:
---   follower.show_following = true (the follower has agreed to show what they follow)
---   followed.show_followers = true (the followed Member has agreed to show their followers)
--- Per Postgres RLS multi-policy semantics, this OR's with member_follows_self_read —
--- a row is visible if either policy returns true.
+-- Public-by-default visibility. Per the 2026-05-11 product decision (see
+-- migration header + DEVIATIONS): follow graph is community-fabric, and
+-- the cross-Member privacy work ADR-9 targets lives on
+-- member_location_affinities (T049). If a future b2 surface composer wants
+-- per-Member opt-out, it wires member_privacy.show_following /
+-- show_followers via the action layer; the schema does not gate at b1.
 create policy member_follows_public_read on public.member_follows
   for select
-  using (
-    exists (
-      select 1 from public.member_privacy mp_follower
-      where mp_follower.member_id = follower_member_id
-        and mp_follower.show_following = true
-    )
-    and exists (
-      select 1 from public.member_privacy mp_followed
-      where mp_followed.member_id = followed_member_id
-        and mp_followed.show_followers = true
-    )
-  );
+  using (true);
 
 -- No INSERT / UPDATE / DELETE policy — action-layer-only writes per ADR-7.
 -- The action handlers `member.follow` / `member.unfollow` (T2) own writes;
@@ -110,4 +101,4 @@ create policy member_follows_public_read on public.member_follows
 -- "you previously followed X" surfaces working).
 
 comment on table public.member_follows is
-  'Loop 8 substrate. Soft-unfollow via unfollowed_at. Visibility gated by member_privacy.show_following + show_followers on both endpoints; self-rows always visible to the Member.';
+  'Loop 8 substrate. Soft-unfollow via unfollowed_at. Public-by-default visibility per the 2026-05-11 product decision — follow graph is community-fabric. Location-affinity privacy (lives/works) lives on member_location_affinities (T049) where ADR-9 opt-out posture applies.';

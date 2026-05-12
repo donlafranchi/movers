@@ -131,24 +131,21 @@ describe('T048 — 010_member_interests_follows.sql: member_follows', () => {
     )
   })
 
-  it('defines member_follows_self_read covering both endpoints', () => {
+  it('defines member_follows_public_read as fully public (using true)', () => {
     expect(sql).toMatch(
-      /create policy\s+member_follows_self_read[\s\S]+for select[\s\S]+follower_member_id\s*=\s*auth\.uid\(\)[\s\S]+or[\s\S]+followed_member_id\s*=\s*auth\.uid\(\)/i,
+      /create policy\s+member_follows_public_read[\s\S]+for select[\s\S]+using\s*\(\s*true\s*\)/i,
     )
   })
 
-  it('defines member_follows_public_read gated by both endpoints privacy via EXISTS on member_privacy', () => {
-    const m = sql.match(
-      /create policy\s+member_follows_public_read[\s\S]+?;\s/i,
-    )
-    expect(m).not.toBeNull()
-    const body = m![0]
-    expect(body).toMatch(/for select/i)
-    // Two exists subqueries against member_privacy.
-    const existsCount = (body.match(/exists\s*\(\s*select/gi) ?? []).length
-    expect(existsCount).toBeGreaterThanOrEqual(2)
-    expect(body).toMatch(/member_privacy[\s\S]+show_following\s*=\s*true/i)
-    expect(body).toMatch(/member_privacy[\s\S]+show_followers\s*=\s*true/i)
+  it('does NOT define a privacy-gated public-read policy (no EXISTS on member_privacy)', () => {
+    // Per the 2026-05-11 product decision, follow graph is community-fabric.
+    // Cross-Member privacy work lands on member_location_affinities (T049).
+    expect(sql).not.toMatch(/member_privacy[\s\S]+show_following\s*=\s*true/i)
+    expect(sql).not.toMatch(/member_privacy[\s\S]+show_followers\s*=\s*true/i)
+  })
+
+  it('does NOT define a separate self-read policy (subsumed by public_read)', () => {
+    expect(sql).not.toMatch(/create policy\s+member_follows_self_read/i)
   })
 
   it('has no INSERT / UPDATE / DELETE policy on member_follows', () => {
