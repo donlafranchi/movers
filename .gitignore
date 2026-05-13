@@ -9,3 +9,8 @@ test-results/
 playwright-report/
 evals/results/
 .DS_Store
+
+# T051 — test-probe scratch dirs (probe lifecycle is try/finally inside tests)
+src/__lint_probe__/
+src/__sql_probe__/
+src/app/api/__probe__/

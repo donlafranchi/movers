@@ -52,6 +52,7 @@ export async function appendEvent(
     )
   }
 
+  // sql-injection-safe: enum-constrained by EventTable
   await ctx.db.query(
     `insert into public.${table}
        (${targetColumn}, event_kind, payload, acting_member_id, via_delegation_id, created_at)

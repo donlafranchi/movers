@@ -1,8 +1,8 @@
-# CLAUDE.md — mainstreetmarket/web
+# web — Main Street Market
 
-This is the deployable application. **This is a separate git repo** pushed to GitHub.
+The deployable application. **Separate git repo** pushed to GitHub.
 
-## Git Setup
+## Git
 
 This directory has its own `.git/`. All git commands run from here.
 
@@ -13,34 +13,36 @@ git commit
 git push
 ```
 
-**BUILD-LOG.md lives here.** Update it after completing tickets.
+`BUILD-LOG.md` lives here — update after completing tickets.
 
-## Quick Start
+## Tech Stack
+
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4 (`@theme inline` tokens in `globals.css`)
+- **Database:** Supabase (Postgres + Auth + Realtime)
+- **Maps:** Mapbox GL JS
+- **Testing:** Playwright (evals), Vitest (unit)
+- **Deploy:** Vercel
+
+## Commands
 
 ```bash
 npm run dev
 npm run build
 npm run test
 npm run eval
+npm run eval -- --grep "F001"   # one feature
+npm run eval -- --watch
 ```
-
-## Tech Stack
-
-**Framework:** Next.js (App Router)
-**Language:** TypeScript
-**Styling:** Tailwind CSS v4 (`@theme inline` tokens in `globals.css`)
-**Database:** Supabase (Postgres + Auth + Realtime)
-**Maps:** Mapbox GL JS
-**Testing:** Playwright (evals), Vitest (unit)
-**Deploy:** Vercel
 
 ## Design System (non-negotiable)
 
-- **All UI uses DLS tokens** from `globals.css` — never hardcode colors, spacing, radii, or shadows. See [product/ui/design-language.md](../product/ui/design-language.md) for the full spec and CTA placement playbook.
+- **DLS tokens only** from `globals.css` — never hardcode colors, spacing, radii, or shadows. Spec: [`product/ui/design-language.md`](../product/ui/design-language.md).
 - **Component recipes:** `.btn-primary`, `.btn-secondary`, `.card`, `.card-hover`, `.chip`, `.chip-selected` — extend, don't duplicate.
-- **Ownership tier colors** are reserved for badges + map pins only (see `lib/map-config.ts` `PIN_COLORS`). Don't reuse them as general accent colors.
+- **Ownership tier colors** are reserved for badges + map pins only (`lib/map-config.ts` `PIN_COLORS`). Don't reuse as general accent colors.
 - **Preserve `data-testid` and `data-extractive` attributes** — evals depend on them.
-- **CTAs:** primary action = solid Tide; secondary = ghost. Member-signup CTAs follow the placement patterns in the DLS.
+- **CTAs:** primary action = solid Tide; secondary = ghost. Member-signup CTAs follow DLS placement patterns.
 
 ## Directory Structure
 
@@ -52,27 +54,28 @@ web/
 │   ├── lib/              # Utilities, Supabase client, types
 │   ├── hooks/            # Custom React hooks
 │   └── styles/           # Global styles
-├── tests/                # Unit tests
+├── tests/                # Unit tests (live next to code: Button.test.tsx)
 ├── evals/
 │   ├── features/         # Playwright tests by feature
 │   └── results/          # Test results
 ├── public/
-├── package.json
-├── tsconfig.json
 └── BUILD-LOG.md
 ```
 
 ## Conventions
 
-- Tests live next to code: `src/components/Button.test.tsx`
-- Commits follow conventional format: `T{NNN}: {title}`
-- Feature branches: `feature/F{N}-{slug}`
-- All commits reference a ticket
+- Tests live next to code: `src/components/Button.test.tsx`.
+- Commits: `T{NNN}: {title}` — one-line, no body, no co-author tag.
+- Feature branches: `feature/F{N}-{slug}`.
+- All commits reference a ticket.
 
-## Running Evals
+## Writing a new API route
 
-```bash
-npm run eval
-npm run eval -- --grep "F001"
-npm run eval -- --watch
-```
+Four CI rules apply (per ticket T051; spec at `product/systems/action-layer.md`). A new `src/app/api/.../route.ts` must satisfy all four or build fails.
+
+- **Rule 1 — credential boundary.** Do not import `pg` or bare `createClient` from `@supabase/supabase-js`, and do not reference `process.env.SUPABASE_SERVICE_ROLE_KEY`, outside `src/actions/_lib/**`. Type-only `pg` imports are allowed. Use `@supabase/ssr` helpers from `src/lib/*` for session-bound access.
+- **Rule 2 — action-layer routing.** Any route that exports `POST`/`PUT`/`PATCH`/`DELETE` must `import ... from '@/actions/...'`. Pre-action-layer routes may carry `// action-layer:exempt — <reason>` annotation paired with a ledger entry in `scripts/action-layer-exemptions.json` (path / reason / expires_at / follow_up_ticket). Prefer delete over exempt.
+- **Rule 3 — RLS coverage.** Every new public table ships with `enable row level security` plus at least one policy. Asserted by `tests/rls-coverage.test.ts` against the live DB.
+- **Rule 4 — parameterized SQL.** Inside `.query` / `.rpc` template literals, use `$1, $2` placeholders. Identifier interpolation (`${table}`) requires a TypeScript union/enum and the annotation `// sql-injection-safe: enum-constrained by <TypeName>` placed on or directly above the call.
+
+Run `npm run check:action-layer && npm run lint && npm test -- ci-enforcement rls-coverage` before committing.
