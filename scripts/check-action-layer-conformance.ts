@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
-// T043 — Action-layer conformance check (extended by T051)
-// Source: development/tickets/done/T043-*; development/tickets/T051-*
+// T043 — Action-layer conformance check (extended by T051, T052)
+// Source: development/tickets/done/T043-*; development/tickets/T051-*;
+//         development/tickets/T052-*
 //
 // Four checks live here:
 //   1. checkPrimaryWrites      — T043. .from('<table>').<write>() outside actions/
@@ -8,12 +9,20 @@
 //   3. checkParameterizedQueries — T051 Rule 4. no ${} in .query`/.rpc` literals
 //   (Rule 1 lives in eslint.config.mjs; Rule 3 lives in tests/rls-coverage.test.ts.)
 //
+// T052 additions:
+//   - `--json` mode emits a single JSON object on stdout for the Phase 0
+//     eval bootstrap to capture: { ok: boolean, violations: Violation[] }.
+//   - ALLOWED_EXCEPTIONS gains scripts/bootstrap-eval-helpers.ts. The
+//     supabase/test-helpers/ folder is also implicitly exempt because the
+//     file lister only scans src/ tests/ evals/ scripts/ — and *.sql files
+//     are not picked up by the .ts/.tsx filter.
+//
 // Exit codes:
 //   0  no violations found
-//   1  one or more violations — printed to stderr
+//   1  one or more violations — printed to stderr (or stdout JSON in --json mode)
 //   2  internal error (script failure, not a code violation)
 
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { resolve, relative, sep } from 'node:path'
 import { execSync } from 'node:child_process'
 
@@ -74,6 +83,12 @@ const ALLOWED_EXCEPTIONS = [
   /^evals\//,
   // This conformance script itself.
   /^scripts\/check-action-layer-conformance\.ts$/,
+  // T052 eval helpers — supabase/test-helpers/ is non-production SQL applied
+  // only by the bootstrap script (see ADR-18). The bootstrap script itself
+  // is the only sanctioned write path outside src/actions/ — its pg import
+  // and direct insert into eval_artifacts ride this allowlist entry. The
+  // hole is explicit, named, and confined to a single path.
+  /^scripts\/bootstrap-eval-helpers\.ts$/,
 ]
 
 interface Violation {
@@ -406,6 +421,19 @@ function checkParameterizedQueries(relPath: string, content: string): Violation[
 }
 
 function main(): number {
+  // T052 sub-task — `--json` mode for the action-layer-conformance check.
+  // The bootstrap-eval-helpers.ts script ingests this output and writes it
+  // into public.eval_artifacts under key='conformance_check'. The Playwright
+  // spec then reads it via the eval_conformance_check_result() helper.
+  //
+  // Contract:
+  //   - Always emits a single JSON object on stdout: { ok, violations }.
+  //   - Exit code semantics unchanged: 0 = clean, 1 = violations, 2 = crash.
+  //   - The human-readable text mode is the default (no flag); `--json`
+  //     suppresses the text output entirely so the JSON is the only thing
+  //     written to stdout.
+  const jsonMode = process.argv.includes('--json')
+
   const files = listTsFiles()
   const { entries: ledger, errors: ledgerErrors } = loadExemptionLedger()
   const allViolations: Violation[] = []
@@ -436,6 +464,15 @@ function main(): number {
       column: 1,
       match: err,
     })
+  }
+
+  if (jsonMode) {
+    // Single line of JSON to stdout — easy to parse, easy to grep, easy
+    // to stash in a Postgres jsonb column.
+    process.stdout.write(
+      JSON.stringify({ ok: allViolations.length === 0, violations: allViolations }) + '\n',
+    )
+    return allViolations.length === 0 ? 0 : 1
   }
 
   if (allViolations.length === 0) {

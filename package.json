@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "eval": "playwright test",
     "eval:ui": "playwright test --ui",
+    "eval:bootstrap": "tsx scripts/bootstrap-eval-helpers.ts",
     "check:action-layer": "tsx scripts/check-action-layer-conformance.ts"
   },
   "dependencies": {
