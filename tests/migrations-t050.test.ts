@@ -194,29 +194,41 @@ describe('T050 — 012_member_agent_assistance.sql: member_delegations shape', (
 })
 
 describe('T050 — 012_member_agent_assistance.sql: FK retrofits (close via_delegation_id circle)', () => {
+  // Spec divergence: ticket § Acceptance Criteria mandates the two-step
+  // `not valid` + `validate constraint` pattern. Postgres rejects NOT VALID
+  // FK on partitioned tables (SQLSTATE 42809); both member_events and
+  // location_events are RANGE-partitioned. The fix-forward shape is a single
+  // ADD CONSTRAINT that validates immediately (no-op on empty tables).
+  // DEVIATIONS entry recorded; ticket flagged for spec revision.
   const raw = read('012_member_agent_assistance.sql')
   const sql = stripComments(raw)
 
-  it('adds member_events_via_delegation_fkey with not valid + on delete set null', () => {
+  it('adds member_events_via_delegation_fkey with on delete set null (no NOT VALID — partitioned)', () => {
     expect(sql).toMatch(
-      /alter table\s+public\.member_events\s+add constraint\s+member_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s+not valid/i,
+      /alter table\s+public\.member_events\s+add constraint\s+member_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s*;/i,
     )
   })
 
-  it('validates member_events_via_delegation_fkey as the second step', () => {
-    expect(sql).toMatch(
+  it('does NOT use NOT VALID on member_events FK (Postgres rejects on partitioned tables)', () => {
+    expect(sql).not.toMatch(
+      /alter table\s+public\.member_events\s+add constraint\s+member_events_via_delegation_fkey[\s\S]*?not valid/i,
+    )
+    expect(sql).not.toMatch(
       /alter table\s+public\.member_events\s+validate constraint\s+member_events_via_delegation_fkey/i,
     )
   })
 
-  it('adds location_events_via_delegation_fkey with not valid + on delete set null', () => {
+  it('adds location_events_via_delegation_fkey with on delete set null (no NOT VALID — partitioned)', () => {
     expect(sql).toMatch(
-      /alter table\s+public\.location_events\s+add constraint\s+location_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s+not valid/i,
+      /alter table\s+public\.location_events\s+add constraint\s+location_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s*;/i,
     )
   })
 
-  it('validates location_events_via_delegation_fkey as the second step', () => {
-    expect(sql).toMatch(
+  it('does NOT use NOT VALID on location_events FK (Postgres rejects on partitioned tables)', () => {
+    expect(sql).not.toMatch(
+      /alter table\s+public\.location_events\s+add constraint\s+location_events_via_delegation_fkey[\s\S]*?not valid/i,
+    )
+    expect(sql).not.toMatch(
       /alter table\s+public\.location_events\s+validate constraint\s+location_events_via_delegation_fkey/i,
     )
   })

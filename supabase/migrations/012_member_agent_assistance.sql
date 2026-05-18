@@ -148,24 +148,27 @@ comment on table public.member_delegations is
 ------------------------------------------------------------
 
 -- T042's member_events.via_delegation_id was reserved without FK because
--- member_delegations did not yet exist. Two-step not-valid / validate
--- pattern: avoids a table-scan lock on populated tables. Zero rows today,
--- so validation is a no-op; cheap muscle memory for future runs.
+-- member_delegations did not yet exist. The ticket § Acceptance Criteria
+-- mandates the two-step `not valid` + `validate constraint` pattern (cheap
+-- muscle memory for future populated-table runs), but Postgres rejects
+-- NOT VALID foreign keys on partitioned referencing tables with
+-- SQLSTATE 42809 ("This feature is not yet supported on partitioned
+-- tables"). Both member_events and location_events are RANGE-partitioned
+-- on created_at per ADR-7's append-only invariant.
+--
+-- Workaround: drop NOT VALID. Postgres validates the FK immediately at
+-- ADD CONSTRAINT time, which on the empty referencing table is a no-op
+-- (zero rows to scan). The recursive propagation to existing partitions
+-- happens automatically; subsequent partitions created by the rotation
+-- function inherit the constraint. Spec divergence recorded in
+-- DEVIATIONS.md; T050 ticket flagged for revision.
 alter table public.member_events
   add constraint member_events_via_delegation_fkey
   foreign key (via_delegation_id) references public.member_delegations(id)
-  on delete set null
-  not valid;
+  on delete set null;
 
-alter table public.member_events
-  validate constraint member_events_via_delegation_fkey;
-
--- T045's location_events.via_delegation_id, same rationale.
+-- T045's location_events.via_delegation_id, same Postgres restriction.
 alter table public.location_events
   add constraint location_events_via_delegation_fkey
   foreign key (via_delegation_id) references public.member_delegations(id)
-  on delete set null
-  not valid;
-
-alter table public.location_events
-  validate constraint location_events_via_delegation_fkey;
+  on delete set null;

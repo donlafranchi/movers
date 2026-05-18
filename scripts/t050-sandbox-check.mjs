@@ -161,18 +161,25 @@ check('member_delegations: no DELETE policy', () =>
   !/policy[^;]+member_delegations[^;]+for delete/i.test(sql),
 )
 
-// ----- FK retrofits -----
-check('member_events FK retrofit: add constraint + not valid + on delete set null', () =>
-  /alter table\s+public\.member_events\s+add constraint\s+member_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s+not valid/i.test(sql),
+// ----- FK retrofits (no NOT VALID — partitioned-table restriction) -----
+// Postgres rejects NOT VALID FK on partitioned referencing tables
+// (SQLSTATE 42809). Both member_events and location_events are
+// RANGE-partitioned, so the ticket's mandated two-step pattern is
+// incompatible. Fix-forward shape: single ADD CONSTRAINT that validates
+// immediately (no-op on empty tables). DEVIATIONS entry recorded.
+check('member_events FK retrofit: single add constraint with on delete set null', () =>
+  /alter table\s+public\.member_events\s+add constraint\s+member_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s*;/i.test(sql),
 )
-check('member_events FK retrofit: validate constraint as the second step', () =>
-  /alter table\s+public\.member_events\s+validate constraint\s+member_events_via_delegation_fkey/i.test(sql),
+check('member_events FK retrofit: no NOT VALID (partitioned table)', () =>
+  !/alter table\s+public\.member_events\s+add constraint\s+member_events_via_delegation_fkey[\s\S]*?not valid/i.test(sql) &&
+  !/alter table\s+public\.member_events\s+validate constraint\s+member_events_via_delegation_fkey/i.test(sql),
 )
-check('location_events FK retrofit: add constraint + not valid + on delete set null', () =>
-  /alter table\s+public\.location_events\s+add constraint\s+location_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s+not valid/i.test(sql),
+check('location_events FK retrofit: single add constraint with on delete set null', () =>
+  /alter table\s+public\.location_events\s+add constraint\s+location_events_via_delegation_fkey\s+foreign key\s*\(\s*via_delegation_id\s*\)\s+references\s+public\.member_delegations\s*\(\s*id\s*\)\s+on delete set null\s*;/i.test(sql),
 )
-check('location_events FK retrofit: validate constraint as the second step', () =>
-  /alter table\s+public\.location_events\s+validate constraint\s+location_events_via_delegation_fkey/i.test(sql),
+check('location_events FK retrofit: no NOT VALID (partitioned table)', () =>
+  !/alter table\s+public\.location_events\s+add constraint\s+location_events_via_delegation_fkey[\s\S]*?not valid/i.test(sql) &&
+  !/alter table\s+public\.location_events\s+validate constraint\s+location_events_via_delegation_fkey/i.test(sql),
 )
 
 console.log(`passed=${passed} failed=${failed}`)
