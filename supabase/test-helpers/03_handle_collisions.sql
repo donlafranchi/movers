@@ -26,15 +26,27 @@
 -- helper safe to re-run; the test owns the cleanup lifecycle via
 -- eval_clear_handle_collision_range below.
 --
--- Implementation note: this is a single INSERT ... SELECT against
--- generate_series so all rows land in one statement. Handle index 1 is the
--- bare base; indexes 2..p_count append the '-N' suffix.
+-- ADR-15 compliance: T047's constraint trigger
+-- members_assert_id_in_auth_users rejects any members insert whose id is
+-- not in auth.users. The loop body seeds an auth.users row first via
+-- eval_seed_auth_user_only (04_auth_user_seeding.sql), then the members
+-- row. The new helper sets eval.skip_signup_hook=on transaction-locally so
+-- the pg_net hook does not fire for the bulk-seeded rows.
+--
+-- Implementation note: the FOR loop is required because we need a
+-- per-iteration uuid threaded through both the auth.users insert and the
+-- members insert. The prior single INSERT … SELECT shape silently used
+-- gen_random_uuid() which collided with the constraint trigger.
 create or replace function public.eval_seed_handle_collision_range(p_base text, p_count int)
 returns void
 language plpgsql
 security definer
 set search_path = public, pg_catalog
 as $$
+declare
+  n int;
+  new_id uuid;
+  this_handle text;
 begin
   if p_count < 1 then
     return;
@@ -59,13 +71,19 @@ begin
       using errcode = '22023';
   end if;
 
-  insert into public.members (id, handle, display_name)
-  select
-    gen_random_uuid(),
-    case when n = 1 then p_base else p_base || '-' || n::text end,
-    'Collision Seed ' || n::text
-  from generate_series(1, p_count) as g(n)
-  on conflict (handle) do nothing;
+  for n in 1..p_count loop
+    new_id := gen_random_uuid();
+    this_handle := case when n = 1 then p_base else p_base || '-' || n::text end;
+
+    -- Seed auth.users first to satisfy members_assert_id_in_auth_users.
+    -- The helper sets eval.skip_signup_hook=on inside its body so the
+    -- pg_net hook does not enqueue 99 outbound requests.
+    perform public.eval_seed_auth_user_only(new_id, null);
+
+    insert into public.members (id, handle, display_name)
+    values (new_id, this_handle, 'Collision Seed ' || n::text)
+    on conflict (handle) do nothing;
+  end loop;
 end;
 $$;
 
@@ -73,7 +91,7 @@ revoke execute on function public.eval_seed_handle_collision_range(text, int) fr
 grant execute on function public.eval_seed_handle_collision_range(text, int) to service_role;
 
 comment on function public.eval_seed_handle_collision_range(text, int) is
-  'T052 eval helper — seeds p_count members with handles {p_base, p_base-2, ..., p_base-p_count} in one INSERT. Idempotent via on conflict do nothing. Consumed by web/evals/phase-0/floor.spec.ts (T043 — saturates the 99-collision window so the next member.create returns 409).';
+  'T052 eval helper — seeds p_count members with handles {p_base, p_base-2, ..., p_base-p_count} via a FOR loop. Each iteration calls eval_seed_auth_user_only first (ADR-15: members.id must exist in auth.users — T047 constraint trigger). Idempotent via on conflict do nothing. Consumed by web/evals/phase-0/floor.spec.ts (T043 — saturates the 99-collision window so the next member.create returns 409).';
 
 -- Clear all members whose handle is p_base OR matches p_base-<digits>.
 -- Uses LIKE rather than regex with concatenation: parameterized-safe and
@@ -92,24 +110,34 @@ create or replace function public.eval_clear_handle_collision_range(p_base text)
 returns void
 language plpgsql
 security definer
-set search_path = public, pg_catalog
+set search_path = public, auth, pg_catalog
 as $$
+declare
+  doomed_ids uuid[];
 begin
+  -- Capture the doomed ids up front so the auth.users delete can target
+  -- the same set after the members rows are gone.
+  select coalesce(array_agg(id), '{}'::uuid[])
+  into doomed_ids
+  from public.members
+  where handle = p_base or handle like p_base || '-%';
+
   -- Delete event-log rows first to satisfy the FK constraint on
   -- member_events.member_id and the ON DELETE RESTRICT on
   -- member_events.acting_member_id.
   delete from public.member_events
-  where member_id in (
-    select id from public.members
-    where handle = p_base or handle like p_base || '-%'
-  )
-     or acting_member_id in (
-    select id from public.members
-    where handle = p_base or handle like p_base || '-%'
-  );
+  where member_id = any(doomed_ids)
+     or acting_member_id = any(doomed_ids);
 
   delete from public.members
-  where handle = p_base or handle like p_base || '-%';
+  where id = any(doomed_ids);
+
+  -- Clean up the seeded auth.users rows (ADR-15 compliance — the seed
+  -- helper minted these). The members_assert_id_in_auth_users trigger has
+  -- already passed; deleting the auth.users row after the members row is
+  -- the safe order.
+  delete from auth.users
+  where id = any(doomed_ids);
 end;
 $$;
 

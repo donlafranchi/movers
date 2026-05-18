@@ -105,6 +105,13 @@ test.describe("Phase 0 — AI-native floor", () => {
 
     test("Given the migrations have applied | When we attempt to insert a duplicate handle | Then the unique constraint rejects it", async () => {
       const probeId = randomUUID();
+      const secondId = randomUUID();
+      // T047 (ADR-15): members.id must exist in auth.users before insert.
+      // Seed auth.users rows via the test helper so the constraint trigger
+      // members_assert_id_in_auth_users is satisfied at deferred-check time.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: probeId });
+      await admin.rpc("eval_seed_auth_user_only", { p_id: secondId });
+
       const { error: firstInsert } = await admin
         .from("members")
         .insert({ id: probeId, handle: "phase0-probe", display_name: "Probe" });
@@ -112,10 +119,11 @@ test.describe("Phase 0 — AI-native floor", () => {
 
       const { error: secondInsert } = await admin
         .from("members")
-        .insert({ id: randomUUID(), handle: "phase0-probe", display_name: "Probe Two" });
+        .insert({ id: secondId, handle: "phase0-probe", display_name: "Probe Two" });
       expect(secondInsert?.code).toBe("23505");
 
       await admin.from("members").delete().eq("id", probeId);
+      await cleanupAuthUsers([probeId, secondId]);
     });
 
     test("Given the migrations have applied | When we describe member_events | Then the audit fields are NOT NULL and the table is partitioned", async () => {
@@ -164,10 +172,15 @@ test.describe("Phase 0 — AI-native floor", () => {
     });
 
     test("Given the system Member exists | When we attempt to claim handle='system' | Then the insert is rejected by the unique constraint", async () => {
+      const imposterId = randomUUID();
+      // ADR-15: seed auth.users so the constraint trigger isn't what rejects
+      // the insert — we want the unique violation on handle='system' to win.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: imposterId });
       const { error } = await admin
         .from("members")
-        .insert({ id: randomUUID(), handle: "system", display_name: "Imposter" });
+        .insert({ id: imposterId, handle: "system", display_name: "Imposter" });
       expect(error?.code).toBe("23505");
+      await cleanupAuthUsers([imposterId]);
     });
 
     test("Given the system Member was inserted by migration | When we read its bootstrap event | Then exactly one member.created event exists self-referencing as acting_member_id", async () => {
@@ -190,7 +203,15 @@ test.describe("Phase 0 — AI-native floor", () => {
   // T043 — Action layer scaffold + member.create handler
   // ------------------------------------------------------------
 
-  test.describe("T043 — Action layer scaffold + member.create handler", () => {
+  // SERIAL: the four collision-handling tests below share the `maya` handle
+  // base. Under fullyParallel: true (playwright.config.ts), they race —
+  // test "handle maya is already taken" inserts members(handle='maya') and
+  // test "maya through maya-99 are all taken" seeds 99 rows including
+  // handle='maya' + clears `maya%` between assertions. Running parallel
+  // makes them clobber each other. Serial mode keeps the shared-state
+  // invariants intact without losing parallelism on tests in other
+  // describes. (T052 ADR-15 fix-forward 2026-05-18.)
+  test.describe.serial("T043 — Action layer scaffold + member.create handler", () => {
     test("Given the action layer is the only write surface | When we run the conformance check | Then no direct writes to protected tables exist outside web/src/actions/", async () => {
       const { data, error } = await admin.rpc("eval_conformance_check_result");
       expect(error, "helper eval_conformance_check_result missing — build wires conformance script + result probe").toBeNull();
@@ -200,6 +221,11 @@ test.describe("Phase 0 — AI-native floor", () => {
     test("Given member.create is the proof-of-pattern handler | When we invoke it with a fresh auth user id | Then a members row and a member_events row are written in the same transaction with correct audit fields", async () => {
       const authUserId = randomUUID();
       const email = `phase0-${authUserId.slice(0, 8)}@example.test`;
+      // ADR-15: provision auth.users for the handler to satisfy the
+      // members_assert_id_in_auth_users trigger when it inserts the
+      // members row. Helper bypasses the signup-hook so member.create
+      // sees a clean slate (no pre-existing members row).
+      await admin.rpc("eval_seed_auth_user_only", { p_id: authUserId, p_email: email });
 
       const res = await invokeMemberCreate({ authUserId, email });
       expect(res.status).toBe(200);
@@ -231,6 +257,7 @@ test.describe("Phase 0 — AI-native floor", () => {
 
       await admin.from("member_events").delete().eq("member_id", authUserId);
       await admin.from("members").delete().eq("id", authUserId);
+      await cleanupAuthUsers([authUserId]);
     });
 
     test("Given the event-log write fails | When member.create runs | Then the members row is rolled back (ADR-10 same-transaction invariant)", async () => {
@@ -245,9 +272,14 @@ test.describe("Phase 0 — AI-native floor", () => {
 
     test("Given handle 'maya' is already taken | When member.create is called with email='maya@example.test' | Then the new row gets handle='maya-2'", async () => {
       const existingId = randomUUID();
+      // ADR-15: seed auth.users for the existing-maya row so the direct
+      // insert into members satisfies members_assert_id_in_auth_users.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: existingId });
       await admin.from("members").insert({ id: existingId, handle: "maya", display_name: "Existing Maya" });
 
       const newAuthId = randomUUID();
+      // ADR-15: seed auth.users for the about-to-be-created member.create row.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: newAuthId, p_email: "maya@example.test" });
       const res = await invokeMemberCreate({ authUserId: newAuthId, email: "maya@example.test" });
       expect(res.status).toBe(200);
       const body = (await res.json()) as { handle: string };
@@ -256,18 +288,26 @@ test.describe("Phase 0 — AI-native floor", () => {
       await admin.from("member_events").delete().eq("member_id", newAuthId);
       await admin.from("members").delete().eq("id", newAuthId);
       await admin.from("members").delete().eq("id", existingId);
+      await cleanupAuthUsers([existingId, newAuthId]);
     });
 
     test("Given handles maya through maya-99 are all taken | When member.create is called with email='maya@example.test' | Then it returns 409 ConflictError", async () => {
       // Build wires a helper that seeds the collision range and clears it after.
+      // T052 fix-forward (ADR-15): the helper now seeds auth.users rows in
+      // addition to public.members so the constraint trigger
+      // members_assert_id_in_auth_users is satisfied for all 99 inserts.
       const { error: seedErr } = await admin.rpc("eval_seed_handle_collision_range", { p_base: "maya", p_count: 99 });
       expect(seedErr).toBeNull();
 
       const newAuthId = randomUUID();
+      // ADR-15: the member.create handler about to be invoked needs an
+      // auth.users row before its members insert satisfies the trigger.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: newAuthId, p_email: "maya@example.test" });
       const res = await invokeMemberCreate({ authUserId: newAuthId, email: "maya@example.test" });
       expect(res.status).toBe(409);
 
       await admin.rpc("eval_clear_handle_collision_range", { p_base: "maya" });
+      await cleanupAuthUsers([newAuthId]);
     });
 
     test("Given an invalid email is passed | When member.create runs | Then it returns 400 ValidationError and no rows are written", async () => {
@@ -341,6 +381,10 @@ test.describe("Phase 0 — AI-native floor", () => {
     test("Given a member.create was already run for auth user X | When the signup hook fires a second time for X | Then it returns 409 and exactly one members row + one member.created event exist", async () => {
       const authUserId = randomUUID();
       const email = `dupe-${authUserId.slice(0, 8)}@example.test`;
+      // ADR-15: provision auth.users before the first invokeMemberCreate so
+      // the constraint trigger lets the members row land. The signup-hook
+      // is bypassed by the helper, so member.create is the first writer.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: authUserId, p_email: email });
 
       const r1 = await invokeMemberCreate({ authUserId, email });
       expect(r1.status).toBe(200);
@@ -359,6 +403,7 @@ test.describe("Phase 0 — AI-native floor", () => {
 
       await admin.from("member_events").delete().eq("member_id", authUserId);
       await admin.from("members").delete().eq("id", authUserId);
+      await cleanupAuthUsers([authUserId]);
     });
   });
 
@@ -369,6 +414,8 @@ test.describe("Phase 0 — AI-native floor", () => {
   test.describe("Phase 0 RLS smoke (anon vs auth-self vs auth-other on members)", () => {
     test("Given a human Member exists | When anon selects members | Then the row is returned (deleted_at IS NULL, login_disabled = false)", async () => {
       const probeId = randomUUID();
+      // ADR-15: provision auth.users before the members insert.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: probeId });
       await admin.from("members").insert({ id: probeId, handle: `anon-probe-${probeId.slice(0, 6)}`, display_name: "Anon Probe" });
 
       const { data, error } = await anon.from("members").select("id, handle").eq("id", probeId);
@@ -376,6 +423,7 @@ test.describe("Phase 0 — AI-native floor", () => {
       expect(data).toHaveLength(1);
 
       await admin.from("members").delete().eq("id", probeId);
+      await cleanupAuthUsers([probeId]);
     });
 
     test("Given anon has no auth.uid() | When anon attempts INSERT into members | Then it is rejected by RLS (no insert policy applies)", async () => {
@@ -389,6 +437,8 @@ test.describe("Phase 0 — AI-native floor", () => {
 
     test("Given anon has no auth.uid() | When anon attempts UPDATE on another Member's row | Then it is rejected by RLS", async () => {
       const probeId = randomUUID();
+      // ADR-15: provision auth.users before the members insert.
+      await admin.rpc("eval_seed_auth_user_only", { p_id: probeId });
       await admin.from("members").insert({ id: probeId, handle: `anon-upd-${probeId.slice(0, 6)}`, display_name: "Anon Upd Probe" });
 
       const { data: updated, error: updErr } = await anon.from("members").update({ display_name: "Hijacked" }).eq("id", probeId).select();
@@ -396,6 +446,7 @@ test.describe("Phase 0 — AI-native floor", () => {
       expect(updErr === null && (updated ?? []).length === 0).toBeTruthy();
 
       await admin.from("members").delete().eq("id", probeId);
+      await cleanupAuthUsers([probeId]);
     });
   });
 });
@@ -422,4 +473,21 @@ async function waitForRow<T>(probe: () => Promise<T | null | undefined>, timeout
     await new Promise((r) => setTimeout(r, 100));
   }
   return null;
+}
+
+// ADR-15 cleanup: after a test seeds auth.users via eval_seed_auth_user_only,
+// it must also delete the row so subsequent runs don't accumulate. We use
+// admin.auth.admin.deleteUser when available (the canonical path) and fall
+// back to a direct delete via the service-role admin client. deleteUser also
+// hits the supabase_auth_admin role's view, which handles cascading cleanup.
+async function cleanupAuthUsers(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    try {
+      await admin.auth.admin.deleteUser(id);
+    } catch {
+      // Swallow — best-effort cleanup. The localhost guard on the bootstrap
+      // script keeps the row pollution scoped to dev; a stale row here will
+      // simply be on conflict do nothing on the next bootstrap.
+    }
+  }
 }
