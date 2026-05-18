@@ -75,7 +75,7 @@ const RECRUITMENT_CATEGORIES: Category[] = [
 
 function OpenSpotCard({ type, emoji }: { type: string; emoji: string }) {
   return (
-    <div className="flex-shrink-0 w-44 border-2 border-dashed border-neutral-300 rounded-xl overflow-hidden bg-neutral-50 flex flex-col">
+    <div className="h-full flex-shrink-0 w-44 border-2 border-dashed border-neutral-300 rounded-xl overflow-hidden bg-neutral-50 flex flex-col">
       <div className="h-28 flex items-center justify-center bg-neutral-100 text-2xl text-neutral-400">
         {emoji}
       </div>
@@ -96,19 +96,19 @@ function OpenSpotCard({ type, emoji }: { type: string; emoji: string }) {
 
 function ExampleCard({ name, tagline, emoji }: { name: string; tagline: string; emoji: string }) {
   return (
-    <div className="flex-shrink-0 w-44 bg-white border border-neutral-200 rounded-xl overflow-hidden relative">
+    <div className="h-full flex-shrink-0 w-44 bg-white border border-neutral-200 rounded-xl overflow-hidden relative flex flex-col">
       <div className="absolute top-2 right-2 z-10 bg-amber-100 text-amber-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
         Example
       </div>
       <div className="h-28 bg-gradient-to-br from-[--color-accent-tint] to-amber-100 flex items-center justify-center text-3xl">
         {emoji}
       </div>
-      <div className="p-3">
+      <div className="p-3 flex-1 flex flex-col">
         <p className="font-medium text-sm text-neutral-900 line-clamp-1">{name}</p>
         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">{tagline}</p>
         <Link
           href="/join"
-          className="mt-2 block text-center text-[11px] font-semibold bg-[--color-accent] text-white rounded-lg py-1.5 hover:bg-[--color-accent-hover]"
+          className="mt-auto pt-2 block text-center text-[11px] font-semibold bg-[--color-accent] text-white rounded-lg py-1.5 hover:bg-[--color-accent-hover]"
         >
           Sign up like this
         </Link>
@@ -184,13 +184,13 @@ export function RecruitmentGrid() {
           <h3 className="text-sm font-semibold text-neutral-700 mb-3">
             {cat.emoji} {cat.name}
           </h3>
-          <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+          <div className="flex items-stretch gap-3 overflow-x-auto pb-2 snap-x">
             {cat.spots.map((spot) => (
-              <div key={spot} className="snap-start">
+              <div key={spot} className="snap-start flex">
                 <OpenSpotCard type={spot} emoji={cat.emoji} />
               </div>
             ))}
-            <div className="snap-start">
+            <div className="snap-start flex">
               <ExampleCard name={cat.example.name} tagline={cat.example.tagline} emoji={cat.emoji} />
             </div>
           </div>
