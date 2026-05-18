@@ -1,0 +1,6 @@
+{
+  "git.autorefresh": false,
+  "git.autofetch": false,
+  "git.decorations.enabled": false,
+  "scm.autoReveal": false
+}
