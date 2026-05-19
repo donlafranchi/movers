@@ -1,6 +1,6 @@
 # BUILD-LOG — mainstreetmarket/web
 
-Last updated: 2026-05-18 (Phase 1 eval — 78/80 passing; T053 helpers shipped, 2 remaining failures tracked separately)
+Last updated: 2026-05-19 (Phase 1 eval — **80/80 GREEN**; T054 fix-forward closed the empty-scopes CHECK; Phase 1 substrate fully closed)
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -55,6 +55,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T050 | Phase 1 — Agent-assistance substrate (`012_member_agent_assistance.sql`) | ✅ Build complete + M2 PROCEED; eval 6/7 green via T053 (members-agent-assistance:204 empty-scopes CHECK — T054 fix-forward) |
 | T052 | Phase 0 — Eval helpers (test-helpers folder + bootstrap script) | ✅ Build + eval complete; 4 fix-forwards landed during PM eval pass (ADR-15 seed-auth-user, SAVEPOINT, serial-collision, synthetic email) |
 | T053 | Phase 1 — Eval helpers (4 introspection RPCs appended to `00_introspection.sql`) | ✅ Build + eval complete + M2 PROCEED; 9/10 listed tests flipped green, +1 stale T052 Vitest assertion fixed inline; 2 deviations logged |
+| T054 | Phase 1 — Fix empty-scopes CHECK on `member_delegations` (`013_member_delegations_scopes_check_fix.sql`) | ✅ Build + eval complete + M2/M4 PROCEED; `cardinality(scopes) >= 1` replaces broken `array_length(scopes, 1) >= 1`; 80/80 Phase 1 green |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 
