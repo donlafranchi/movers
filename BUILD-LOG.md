@@ -1,6 +1,6 @@
 # BUILD-LOG — mainstreetmarket/web
 
-Last updated: 2026-05-19 (Phase 1 eval — **105/105 GREEN**; T055 ships Groups schema + 25 new tests; SECURITY DEFINER helper resolves cross-table RLS recursion)
+Last updated: 2026-05-19 (Phase 1 eval — **132/132 GREEN**; T056 ships Items schema (10 tables) + 27 new tests + closes T055's deferred FK)
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -57,6 +57,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T053 | Phase 1 — Eval helpers (4 introspection RPCs appended to `00_introspection.sql`) | ✅ Build + eval complete + M2 PROCEED; 9/10 listed tests flipped green, +1 stale T052 Vitest assertion fixed inline; 2 deviations logged |
 | T054 | Phase 1 — Fix empty-scopes CHECK on `member_delegations` (`013_member_delegations_scopes_check_fix.sql`) | ✅ Build + eval complete + M2/M4 PROCEED; `cardinality(scopes) >= 1` replaces broken `array_length(scopes, 1) >= 1`; 80/80 Phase 1 green |
 | T055 | Phase 1 — Groups schema (`014_groups.sql` + `groups.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; spine + 2 children + memberships + partitioned events + standing-tier view; SECURITY DEFINER helper `current_member_explicit_group_ids()` resolves cross-table RLS recursion (42P17); 25/25 groups tests + 105/105 phase-1 |
+| T056 | Phase 1 — Items schema (`015_items.sql` + `items.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; spine + 4 kind children + 4 join tables + partitioned events; state enum reconciled to (draft/published/withdrawn/fulfilled/closed); closes T055's deferred FK on group_event_anchored.seeded_by_item_id; 27/27 items tests + 132/132 phase-1 |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 
