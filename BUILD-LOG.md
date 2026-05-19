@@ -1,6 +1,6 @@
 # BUILD-LOG — mainstreetmarket/web
 
-Last updated: 2026-05-19 (Phase 1 eval — **80/80 GREEN**; T054 fix-forward closed the empty-scopes CHECK; Phase 1 substrate fully closed)
+Last updated: 2026-05-19 (Phase 1 eval — **105/105 GREEN**; T055 ships Groups schema + 25 new tests; SECURITY DEFINER helper resolves cross-table RLS recursion)
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -56,6 +56,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T052 | Phase 0 — Eval helpers (test-helpers folder + bootstrap script) | ✅ Build + eval complete; 4 fix-forwards landed during PM eval pass (ADR-15 seed-auth-user, SAVEPOINT, serial-collision, synthetic email) |
 | T053 | Phase 1 — Eval helpers (4 introspection RPCs appended to `00_introspection.sql`) | ✅ Build + eval complete + M2 PROCEED; 9/10 listed tests flipped green, +1 stale T052 Vitest assertion fixed inline; 2 deviations logged |
 | T054 | Phase 1 — Fix empty-scopes CHECK on `member_delegations` (`013_member_delegations_scopes_check_fix.sql`) | ✅ Build + eval complete + M2/M4 PROCEED; `cardinality(scopes) >= 1` replaces broken `array_length(scopes, 1) >= 1`; 80/80 Phase 1 green |
+| T055 | Phase 1 — Groups schema (`014_groups.sql` + `groups.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; spine + 2 children + memberships + partitioned events + standing-tier view; SECURITY DEFINER helper `current_member_explicit_group_ids()` resolves cross-table RLS recursion (42P17); 25/25 groups tests + 105/105 phase-1 |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 
