@@ -128,8 +128,12 @@ describe('T052 — bootstrap script presence + layout', () => {
     const sql = readFileSync(resolve(HELPERS_DIR, '03_handle_collisions.sql'), 'utf8')
     expect(sql).toMatch(/function\s+public\.eval_seed_handle_collision_range/i)
     expect(sql).toMatch(/function\s+public\.eval_clear_handle_collision_range/i)
-    // Seed uses generate_series so the count is a single INSERT.
-    expect(sql).toMatch(/generate_series/i)
+    // Seed uses a FOR loop per the 2026-05-18 ADR-15 fix-forward (DEVIATIONS):
+    // the prior `INSERT … SELECT generate_series(...)` shape silently used a
+    // single gen_random_uuid() that collided with T047's id-in-auth-users
+    // trigger. The loop threads a per-iteration uuid through
+    // eval_seed_auth_user_only + the members insert.
+    expect(sql).toMatch(/for\s+\w+\s+in\s+1\s*\.\.\s*p_count\s+loop/i)
     expect(sql).toMatch(/on conflict do nothing/i)
     // Clear uses LIKE (parameterized-safe) rather than regex with raw concatenation.
     expect(sql).toMatch(/handle\s+like\s+/i)
@@ -217,5 +221,83 @@ describe('T052 — package.json wiring', () => {
     expect(pkg.scripts['eval:bootstrap']).toBeDefined()
     expect(pkg.scripts['eval:bootstrap']).toMatch(/bootstrap-eval-helpers/)
     expect(pkg.scripts['eval:bootstrap']).toMatch(/tsx/)
+  })
+})
+
+describe('T053 — Phase 1 introspection helpers appended to 00_introspection.sql', () => {
+  const sql = () => readFileSync(resolve(HELPERS_DIR, '00_introspection.sql'), 'utf8')
+
+  it('defines eval_indexes_for_table(p_table text) returning indexname + indexdef', () => {
+    const s = sql()
+    expect(s).toMatch(/function\s+public\.eval_indexes_for_table\s*\(\s*p_table\s+text\s*\)/i)
+    expect(s).toMatch(/returns\s+table\s*\([^)]*indexname[^)]*indexdef[^)]*\)/i)
+    expect(s).toMatch(/from\s+pg_indexes/i)
+    expect(s).toMatch(/schemaname\s*=\s*'public'/i)
+  })
+
+  it('defines eval_foreign_keys_for_table(p_table text) with single-column conkey[1] indexing', () => {
+    const s = sql()
+    expect(s).toMatch(/function\s+public\.eval_foreign_keys_for_table\s*\(\s*p_table\s+text\s*\)/i)
+    expect(s).toMatch(/c\.conkey\[1\]/i)
+    expect(s).toMatch(/c\.confkey\[1\]/i)
+    // Why: the spec asserts the delete_action by name; the case-mapping has
+    // to be present and complete so missing actions surface as null rather
+    // than silently misreporting.
+    expect(s).toMatch(/'NO ACTION'/)
+    expect(s).toMatch(/'SET NULL'/)
+    expect(s).toMatch(/'CASCADE'/)
+  })
+
+  it('defines eval_partition_count(p_parent text) reading pg_inherits join pg_class', () => {
+    const s = sql()
+    expect(s).toMatch(/function\s+public\.eval_partition_count\s*\(\s*p_parent\s+text\s*\)/i)
+    expect(s).toMatch(/from\s+pg_inherits/i)
+    expect(s).toMatch(/i\.inhparent/i)
+    expect(s).toMatch(/returns\s+integer/i)
+  })
+
+  it('defines eval_location_geography_text(p_location_id uuid) with PostGIS extensions in search_path', () => {
+    const s = sql()
+    expect(s).toMatch(
+      /function\s+public\.eval_location_geography_text\s*\(\s*p_location_id\s+uuid\s*\)/i,
+    )
+    expect(s).toMatch(/returns\s+text/i)
+    // search_path must include `extensions` for ST_AsText to resolve at
+    // definition time on Supabase. Without this the function definition
+    // would error at apply time, not at call time.
+    expect(s).toMatch(
+      /eval_location_geography_text[\s\S]*?set\s+search_path\s*=\s*public\s*,\s*extensions\s*,\s*pg_catalog/i,
+    )
+    expect(s).toMatch(/ST_AsText\s*\(/i)
+  })
+
+  it('all four T053 helpers revoke from public and grant to service_role', () => {
+    const s = sql()
+    for (const fn of [
+      'eval_indexes_for_table',
+      'eval_foreign_keys_for_table',
+      'eval_partition_count',
+      'eval_location_geography_text',
+    ]) {
+      // Pair-matching: each function name appears in at least one revoke
+      // and one grant line. The grant must name service_role explicitly.
+      const revokes = s.match(new RegExp(`revoke\\s+execute\\s+on\\s+function\\s+public\\.${fn}`, 'gi'))
+      const grants = s.match(new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${fn}.*service_role`, 'gi'))
+      expect(revokes, `${fn} missing revoke`).not.toBeNull()
+      expect(grants, `${fn} missing grant to service_role`).not.toBeNull()
+    }
+  })
+
+  it('all four T053 helpers carry a comment-on-function with the T053 marker', () => {
+    const s = sql()
+    for (const fn of [
+      'eval_indexes_for_table',
+      'eval_foreign_keys_for_table',
+      'eval_partition_count',
+      'eval_location_geography_text',
+    ]) {
+      const re = new RegExp(`comment\\s+on\\s+function\\s+public\\.${fn}[\\s\\S]*?T053`, 'i')
+      expect(s, `${fn} missing T053 comment marker`).toMatch(re)
+    }
   })
 })

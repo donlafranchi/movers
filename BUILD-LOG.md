@@ -1,6 +1,6 @@
 # BUILD-LOG — mainstreetmarket/web
 
-Last updated: 2026-05-18 (Phase 0 eval — 22/22 passing)
+Last updated: 2026-05-18 (Phase 1 eval — 78/80 passing; T053 helpers shipped, 2 remaining failures tracked separately)
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -46,14 +46,15 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T042 | Phase 0 — Members + member_events floor + system Member | ✅ Build + eval complete (22/22 floor.spec.ts 2026-05-18) |
 | T043 | Phase 0 — Action layer scaffold + `member.create` handler | ✅ Build + eval complete; 2 handler fix-forwards landed during eval (SAVEPOINT retry-loop; inline savepoint name) |
 | T044 | Phase 0 — Supabase Auth signup hook → `member.create` | ✅ Build + eval complete (22/22 floor.spec.ts 2026-05-18) |
-| T045 | Phase 1 — Locations spine + 3 children + events (`007_locations.sql`) | ✅ Build complete; runtime eval pending |
-| T046 | Phase 1 — Locations RLS fix-forward (`008_locations_owner_read.sql`) | ✅ Build complete; runtime eval pending |
-| T047 | Phase 1 — Members augmentation: FK + privacy + handle history (`009_members_phase1.sql`) | ✅ Build complete + M2 PROCEED; runtime eval pending |
-| T048 | Phase 1 — Member interests + follows (`010_member_interests_follows.sql`) | ✅ Build complete + M2 REQUEST→resolved (follow-visibility privacy gate dropped per PM); runtime eval pending |
+| T045 | Phase 1 — Locations spine + 3 children + events (`007_locations.sql`) | ✅ Build complete; eval 7/8 green via T053 (locations:254 spec-regex precision deviation — pipeline-eval fix-forward) |
+| T046 | Phase 1 — Locations RLS fix-forward (`008_locations_owner_read.sql`) | ✅ Build + eval complete via T053 |
+| T047 | Phase 1 — Members augmentation: FK + privacy + handle history (`009_members_phase1.sql`) | ✅ Build complete + M2 PROCEED; eval complete via T053 |
+| T048 | Phase 1 — Member interests + follows (`010_member_interests_follows.sql`) | ✅ Build complete + M2 REQUEST→resolved (follow-visibility privacy gate dropped per PM); eval complete via T053 |
 | T051 | Phase 0 — Action layer CI enforcement (four rules) | ✅ Build + eval complete (conformance check returned `{ok: true, violations: []}` in the 22/22 run) |
-| T049 | Phase 1 — Member location affinities (`011_member_location_affinities.sql`) | ✅ Build complete; runtime eval pending |
-| T050 | Phase 1 — Agent-assistance substrate (`012_member_agent_assistance.sql`) | ✅ Build complete + M2 PROCEED; runtime eval pending |
+| T049 | Phase 1 — Member location affinities (`011_member_location_affinities.sql`) | ✅ Build complete; eval complete via T053 |
+| T050 | Phase 1 — Agent-assistance substrate (`012_member_agent_assistance.sql`) | ✅ Build complete + M2 PROCEED; eval 6/7 green via T053 (members-agent-assistance:204 empty-scopes CHECK — T054 fix-forward) |
 | T052 | Phase 0 — Eval helpers (test-helpers folder + bootstrap script) | ✅ Build + eval complete; 4 fix-forwards landed during PM eval pass (ADR-15 seed-auth-user, SAVEPOINT, serial-collision, synthetic email) |
+| T053 | Phase 1 — Eval helpers (4 introspection RPCs appended to `00_introspection.sql`) | ✅ Build + eval complete + M2 PROCEED; 9/10 listed tests flipped green, +1 stale T052 Vitest assertion fixed inline; 2 deviations logged |
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 

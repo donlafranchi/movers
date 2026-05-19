@@ -106,3 +106,161 @@ grant execute on function public.eval_is_partitioned(text) to service_role;
 
 comment on function public.eval_is_partitioned(text) is
   'T052 eval helper — true iff the named public-schema table has relkind = ''p'' (a partition parent). Consumed by web/evals/phase-0/floor.spec.ts (T042 member_events partitioning assertion).';
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- T053 — Phase 1 introspection helpers (4–7)
+-- Source: development/tickets/T053-phase-1-eval-helpers.md
+-- Consumed by: web/evals/phase-1/*.spec.ts (T045/T047/T048/T049/T050 surface).
+--
+-- Layout decision: appended to 00_introspection.sql per T053 § "Layout
+-- decision" Option A. Rationale: helpers 4–6 are pure-catalog reads of the
+-- same family as helpers 2–3 above; helper 7 carries a PostGIS dependency
+-- but scopes it locally via `set search_path = public, extensions,
+-- pg_catalog`, so the dependency is a function-body concern, not a file
+-- concern. Splitting helper 7 into a sibling 05_geography.sql would buy
+-- topological isolation we don't yet need (Phase 2 work-map shows no
+-- additional PostGIS-touching helpers as of 2026-05-18).
+--
+-- Same production-safety constraint as the T052 helpers above — these
+-- belong only in test-helpers/, never in migrations/. The bootstrap
+-- localhost guard is the load-bearing safety.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Helper 4 — list indexes for a public-schema table.
+-- Backs every "the partial index exists with predicate X" check in Phase 1
+-- (idx_affinity_member_active, idx_follows_*_active, idx_delegations_member_active,
+-- idx_member_interests_tag, plus the locations GIST partial). The spec assertions
+-- inspect both indexname and indexdef so the predicate is verifiable, not just
+-- the existence.
+create or replace function public.eval_indexes_for_table(p_table text)
+returns table (indexname text, indexdef text)
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
+begin
+  return query
+    select pg_indexes.indexname::text, pg_indexes.indexdef::text
+    from pg_indexes
+    where pg_indexes.schemaname = 'public'
+      and pg_indexes.tablename = p_table
+    order by pg_indexes.indexname;
+end;
+$$;
+
+revoke execute on function public.eval_indexes_for_table(text) from public;
+grant execute on function public.eval_indexes_for_table(text) to service_role;
+
+comment on function public.eval_indexes_for_table(text) is
+  'T053 eval helper — pg_indexes wrapper for the named public table; returns indexname + indexdef so spec assertions can verify partial-index predicates. Consumed by web/evals/phase-1/{locations,members-affinities,members-agent-assistance,members-interests-follows}.spec.ts.';
+
+-- Helper 5 — list single-column foreign keys for a public-schema table.
+-- Returns one row per FK constraint with its referenced table/column and the
+-- ON DELETE action. The body indexes c.conkey[1] / c.confkey[1], so composite
+-- FKs surface only their first column — acceptable at b1; Phase 1's three
+-- FK-introspection call sites are all single-column. If a future ticket needs
+-- composite-FK introspection, this helper extends to one row per constituent
+-- column via unnest(c.conkey) + unnest(c.confkey).
+create or replace function public.eval_foreign_keys_for_table(p_table text)
+returns table (
+  constraint_name text,
+  column_name text,
+  referenced_table text,
+  referenced_column text,
+  delete_action text
+)
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
+begin
+  return query
+    select
+      c.conname::text                                    as constraint_name,
+      a.attname::text                                    as column_name,
+      cl.relname::text                                   as referenced_table,
+      af.attname::text                                   as referenced_column,
+      case c.confdeltype
+        when 'a' then 'NO ACTION'
+        when 'r' then 'RESTRICT'
+        when 'c' then 'CASCADE'
+        when 'n' then 'SET NULL'
+        when 'd' then 'SET DEFAULT'
+      end                                                as delete_action
+    from pg_constraint c
+    join pg_class src       on src.oid = c.conrelid
+    join pg_namespace srn   on srn.oid = src.relnamespace
+    join pg_class cl        on cl.oid = c.confrelid
+    join pg_attribute a     on a.attrelid = c.conrelid and a.attnum = c.conkey[1]
+    join pg_attribute af    on af.attrelid = c.confrelid and af.attnum = c.confkey[1]
+    where c.contype = 'f'
+      and srn.nspname = 'public'
+      and src.relname = p_table
+    order by c.conname;
+end;
+$$;
+
+revoke execute on function public.eval_foreign_keys_for_table(text) from public;
+grant execute on function public.eval_foreign_keys_for_table(text) to service_role;
+
+comment on function public.eval_foreign_keys_for_table(text) is
+  'T053 eval helper — pg_constraint wrapper exposing FKs + ON DELETE action for the named public table. Single-column FKs only (conkey[1]); composite-FK callers should extend via unnest. Consumed by web/evals/phase-1/{members-augmentation,members-agent-assistance}.spec.ts.';
+
+-- Helper 6 — count of child partitions for a partition parent.
+-- Backs the location_events partition-rotation assertion (T045 seeded
+-- current + 2 future months at migration time → minimum 3 leaf partitions
+-- after `supabase db reset`). Mirrors the member_events partition seeding
+-- pattern from T042.
+create or replace function public.eval_partition_count(p_parent text)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
+declare
+  result integer;
+begin
+  select count(*)::integer
+  into result
+  from pg_inherits i
+  join pg_class c        on c.oid = i.inhparent
+  join pg_namespace n    on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname = p_parent;
+  return result;
+end;
+$$;
+
+revoke execute on function public.eval_partition_count(text) from public;
+grant execute on function public.eval_partition_count(text) to service_role;
+
+comment on function public.eval_partition_count(text) is
+  'T053 eval helper — count of leaf partitions whose parent matches the named public-schema partition table. Consumed by web/evals/phase-1/locations.spec.ts (T045 location_events partition-rotation assertion).';
+
+-- Helper 7 — ST_AsText of a locations row's geography column.
+-- search_path includes `extensions` because PostGIS lives there on Supabase
+-- per 001_extensions.sql; without it, ST_AsText is unresolved at definition
+-- time. Returns NULL if no row matches p_location_id (spec asserts the
+-- POINT pattern, so a NULL return fails the match cleanly).
+create or replace function public.eval_location_geography_text(p_location_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public, extensions, pg_catalog
+as $$
+declare
+  result text;
+begin
+  select ST_AsText(locations.geography::geometry)
+  into result
+  from public.locations
+  where locations.id = p_location_id;
+  return result;
+end;
+$$;
+
+revoke execute on function public.eval_location_geography_text(uuid) from public;
+grant execute on function public.eval_location_geography_text(uuid) to service_role;
+
+comment on function public.eval_location_geography_text(uuid) is
+  'T053 eval helper — ST_AsText of the locations row''s geography column, cast through geometry so PostGIS''s text serializer handles it. Consumed by web/evals/phase-1/locations.spec.ts (T045 location_areas centroid-sync trigger assertion).';
