@@ -1,6 +1,6 @@
 # Infrastructure Setup
 
-Step-by-step guide to getting Main Street Market production-ready.
+Step-by-step guide to getting Movers, Makers & Shakers production-ready.
 
 ## Services Overview
 
@@ -19,7 +19,7 @@ Step-by-step guide to getting Main Street Market production-ready.
 
 1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
 2. Click "New Project"
-3. Choose org, name it `mainstreetmarket`, pick nearest region
+3. Choose org, name it `movers-makers-shakers`, pick nearest region
 4. Save the generated database password
 
 ### Get API Keys
@@ -77,7 +77,7 @@ create index idx_supports_business on supports (business_id);
 
 For production, create a scoped token:
 1. Click "Create a token"
-2. Name: `mainstreetmarket-prod`
+2. Name: `movers-makers-shakers-prod`
 3. Scopes: `styles:tiles`, `styles:read`, `fonts:read`, `datasets:read`
 4. URL restrictions: add your production domain
 5. Copy → use as `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel env vars

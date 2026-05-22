@@ -1,4 +1,4 @@
-# web — Main Street Market
+# web — Movers, Makers & Shakers
 
 The deployable application. **Separate git repo** pushed to GitHub.
 

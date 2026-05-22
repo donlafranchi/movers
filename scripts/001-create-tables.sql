@@ -1,4 +1,4 @@
--- Main Street Market — Schema
+-- Movers, Makers & Shakers — Schema
 -- Run in Supabase SQL Editor
 -- This matches the app's TypeScript types exactly
 

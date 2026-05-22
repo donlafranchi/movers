@@ -1,4 +1,4 @@
-# Main Street Market
+# Movers, Makers & Shakers
 
 Map-based platform helping consumers find independently owned local businesses and distinguish them from PE-acquired or corporate-owned competitors.
 

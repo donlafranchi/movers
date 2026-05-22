@@ -1,4 +1,4 @@
-# BUILD-LOG — mainstreetmarket/web
+# BUILD-LOG — movers-makers-shakers/web
 
 Last updated: 2026-05-19 (Phase 1 eval — **142/142 GREEN**; **Phase 1 substrate complete** — T057 ships discoverable_items materialized view + item.published refresh trigger)
 

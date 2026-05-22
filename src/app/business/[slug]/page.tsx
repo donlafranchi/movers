@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const business = await getBusiness(slug)
 
   if (!business) {
-    return { title: 'Business Not Found — Main Street Market' }
+    return { title: 'Business Not Found — Movers, Makers & Shakers' }
   }
 
   const tierLabel = OWNERSHIP_TIERS[business.ownership_tier]?.label ?? business.ownership_tier
@@ -33,11 +33,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? business.story.slice(0, 160)
     : `${tierLabel} · ${business.category} · ${business.city}, ${business.state}`
 
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://mainstreetmarket.com'}/business/${slug}`
-  const ogImage = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://mainstreetmarket.com'}/og-default.png`
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://movers-makers-shakers.com'}/business/${slug}`
+  const ogImage = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://movers-makers-shakers.com'}/og-default.png`
 
   return {
-    title: `${business.name} — Main Street Market`,
+    title: `${business.name} — Movers, Makers & Shakers`,
     description,
     openGraph: {
       title: business.name,
