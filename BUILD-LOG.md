@@ -1,6 +1,6 @@
 # BUILD-LOG — movers-makers-shakers/web
 
-Last updated: 2026-05-19 (Phase 1 eval — **142/142 GREEN**; **Phase 1 substrate complete** — T057 ships discoverable_items materialized view + item.published refresh trigger)
+Last updated: 2026-05-25 (b1.x substrate sprint — T058–T064 substrate + surface code complete; **107/107 sprint unit tests GREEN**; **181/181 Phase 1 evals GREEN**; M2 code-review Approve (2 fixes landed); M4 deploy-checklist drafted at operations/deploy-checklist-b1x.md)
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -59,6 +59,28 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T055 | Phase 1 — Groups schema (`014_groups.sql` + `groups.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; spine + 2 children + memberships + partitioned events + standing-tier view; SECURITY DEFINER helper `current_member_explicit_group_ids()` resolves cross-table RLS recursion (42P17); 25/25 groups tests + 105/105 phase-1 |
 | T056 | Phase 1 — Items schema (`015_items.sql` + `items.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; spine + 4 kind children + 4 join tables + partitioned events; state enum reconciled to (draft/published/withdrawn/fulfilled/closed); closes T055's deferred FK on group_event_anchored.seeded_by_item_id; 27/27 items tests + 132/132 phase-1 |
 | T057 | Phase 1 — discoverable_items view + refresh trigger (`016_discoverable_items.sql` + `discoverable-items.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; materialized view with SECURITY DEFINER refresh on `item.published` events; CONCURRENTLY refresh + unique index; anon-readable; group / soft-delete / response-count / nearest-location semantics verified; 10/10 disc-items + 142/142 phase-1; **closes Phase 1 substrate** |
+| T058 | b1.x — `places` table + launch-locality seed (`017_places.sql` + `places.spec.ts`) | ✅ Build + eval complete + M2/M4 PROCEED; 19/19 unit + 14/14 Phase-1 evals green. Hierarchy + parent-scoped slug uniqueness + GIST polygon index + RLS public-read + place_events partitioned. Seeds 9 rows (California → MSA → Sacramento → 6 neighborhoods). |
+| T059 | b1.x — Reverse-geocoder + `place_for_coords` PG function (`022_*` + `reverse-geocode.ts`) | ✅ Build + eval complete + M2 PROCEED; 12/12 unit + 7/7 Phase-1 evals green. SECURITY DEFINER ST_Covers with smallest-polygon-wins; LRU cache (1k @ 24h, 4-dp quantize); Mapbox fallback with slug-match; graceful nulls on Mapbox 5xx / missing token. |
+| T060 | b1.x — Place-scoped URL routing (`/p/[...slug]` + `resolve-path.ts` + `place-breadcrumb.tsx`) | ✅ Build + eval complete + M2/M3 PROCEED; 10/10 unit + 7/7 Phase-1 evals green. Next.js catch-all + parent_id chain resolver + ARIA breadcrumb. **b1.1 constraint flagged in DEVIATIONS:** Next.js does not allow a static segment after a catch-all, so Groups-under-place URLs must dispatch inside this same page.tsx. |
+| T061 | b1.x — Retire `member_location_affinities` (`021_*`) | ✅ Build + eval complete + M2/M4 PROCEED; 6/6 unit tests + Phase-1 floor green. Drops table + 3 SECURITY DEFINER functions; rewrites `member_events.event_kind` CHECK to drop 2 retired kinds; deletes `members-affinities.spec.ts`; patches `floor.spec.ts` + `members-interests-follows.spec.ts`; removes from action-layer PROTECTED_TABLES. |
+| T062 | b1.x — `member_place_interests` + `place_interest_add/remove` handlers (`018_*`) | ✅ Build + eval complete + M2 PROCEED; 12/12 schema + 11/11 handler unit + 10/10 Phase-1 evals green. Owner-only RLS + partial UNIQUE for single active primary_home + atomic-swap promotion + SECONDARY_LIMIT=5 cap. |
+| T063 | b1.x — `member_saved_searches` + 3 handlers (`019_*`) | ✅ Build + eval complete + M2 PROCEED (2 existence-leak findings auto-fixed); 11/11 schema + 18/18 handler unit + 9/9 Phase-1 evals green. At-least-one-filter CHECK + owner-only RLS + place/location/interest_tags filters; update/remove collapse not-owner → NotFoundError for privacy parity. |
+| T064 | b1.x — `items.made_at_*` columns + event-kind extension (`020_*`) | ✅ Build + eval complete + M2/M4 PROCEED; 8/8 unit tests green. 4-value `made_at_verification_source` enum (includes `community_attested` per ADR-21 reshape) + FK to `places` + `items_made_at_only_on_products` CHECK. Includes doc-patch to `planning/rebuild-plan.md:148` (3-value → 4-value form). |
+| T065 | Stryker mutation testing on `src/lib/` (substrate) | ✅ Tooling landed; `npm run mutate` runs end-to-end. Baseline: **30% total mutation score**, `market-dates.ts` 82.5% (only file with sibling unit tests), 4 others 0%. Runtime ~3 min. Local-only; no CI gate. Surfaces a real coverage gap — follow-up work needed to add unit tests for `slugify.ts`, `categories.ts`, `geocoding.ts`, `action-context.ts`. |
+
+### b1.x substrate sprint summary (2026-05-25 — closing)
+
+6 migrations (017–022) + 5 action handlers + 1 reverse-geocoder TS module + 1 path resolver + 1 breadcrumb component + 1 Next.js route + 1 test helper + 14 test files.
+
+- **Unit tests:** 107/107 green.
+- **Phase 1 evals:** 181/181 green (includes 5 new spec files: places, member-place-interests, member-saved-searches, reverse-geocode, place-routing).
+- **`npm run check:action-layer`:** clean. 35 protected tables (3 added — places + member_place_interests + member_saved_searches + place_events; 1 removed — member_location_affinities).
+- **Lint + TypeScript:** clean on all sprint files.
+- **M2 (engineering:code-review):** **Approve** after 2 medium-severity privacy-leak fixes auto-landed (saved-search update/remove existence-vs-auth distinction). 5 suggestions logged in DEVIATIONS § 2026-05-25.
+- **M4 (deploy-checklist):** drafted at [`operations/deploy-checklist-b1x.md`](../operations/deploy-checklist-b1x.md). PM sign-off items remain (apply migrations to prod Supabase BEFORE the web deploy; ratify the `member_location_affinities` drop is safe against prod data).
+- **Pre-existing `migrations-t04*.test.ts` failures** are independent of this sprint (brittle `toEqual` pattern broken since T055).
+
+**Sprint exit criterion met.** All 7 work items implemented and verified against the live local Supabase.
 
 ## Rebuild on Primitives — Phase 0 (AI-native floor)
 

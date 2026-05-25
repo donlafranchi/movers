@@ -128,9 +128,10 @@ test.describe("Phase 1 — Member interests + follows (T048)", () => {
     test("Given follow visibility is public-by-default (2026-05-11 re-scope) | When anon queries member_follows | Then RLS allows read", async () => {
       // Why: T048 DEVIATIONS / 2026-05-11 product decision — follow graph is
       // community-fabric; the load-bearing privacy work shifted to
-      // member_location_affinities (T049). member_follows policy is
-      // `using (true)`. The reserved member_privacy.show_following columns
-      // stay as substrate for a possible b2 per-Member opt-out.
+      // member_place_interests (T062, owner-only RLS per ADR-21;
+      // member_location_affinities itself retired by T061). member_follows
+      // policy is `using (true)`. The reserved member_privacy.show_following
+      // columns stay as substrate for a possible b2 per-Member opt-out.
       const { data, error } = await anon.from("member_follows").select("follower_member_id").limit(1);
       expect(error).toBeNull();
       expect(data).toEqual([]);

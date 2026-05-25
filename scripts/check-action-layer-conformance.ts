@@ -43,7 +43,8 @@ const PROTECTED_TABLES = [
   'member_thread_participants',
   'member_self_records',
   'member_delegations',
-  'member_location_affinities',
+  // member_location_affinities retired by T061 (021); intentionally
+  // removed from the protected list to match the dropped table.
   // Phase 1 additions (kept here so the check surface is forward-stable):
   'items',
   'item_products',
@@ -65,6 +66,11 @@ const PROTECTED_TABLES = [
   'group_event_anchored',
   'group_memberships',
   'group_events',
+  // b1.x — places + member↔geography substrate.
+  'places',
+  'place_events',
+  'member_place_interests',
+  'member_saved_searches',
 ] as const
 
 const WRITE_METHODS = ['insert', 'update', 'delete', 'upsert'] as const

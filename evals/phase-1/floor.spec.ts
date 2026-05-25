@@ -64,9 +64,10 @@ test.describe("Phase 1 — Schema floor (cross-surface)", () => {
       // Why: encodes ADR-7 (action layer is the only write surface) project-
       // wide. The Phase 1 tables (locations, location_*, member_privacy,
       // member_handle_history, member_interests, member_follows,
-      // member_location_affinities, member_self_records, member_delegations)
-      // must not be writable from outside src/actions/. T051's `--json`
-      // pipeline captures the conformance result during bootstrap.
+      // member_self_records, member_delegations; member_location_affinities
+      // retired by T061 per ADR-21) must not be writable from outside
+      // src/actions/. T051's `--json` pipeline captures the conformance
+      // result during bootstrap.
       const { data, error } = await admin.rpc("eval_conformance_check_result");
       expect(error, "helper eval_conformance_check_result missing — run `npm run eval:bootstrap`").toBeNull();
       expect(data).toMatchObject({ ok: true, violations: [] });
@@ -93,8 +94,7 @@ test.describe("Phase 1 — Schema floor (cross-surface)", () => {
       // T048 (interests + follows 010)
       "member_interests",
       "member_follows",
-      // T049 (affinities 011)
-      "member_location_affinities",
+      // T049 (affinities 011) retired by T061 per ADR-21 — entry removed.
       // T050 (agent assistance 012)
       "member_self_records",
       "member_delegations",
@@ -126,9 +126,9 @@ test.describe("Phase 1 — Schema floor (cross-surface)", () => {
       { name: "member_privacy", intent: "ADR-9 opt-out privacy posture" },
       // Why: T2 placeholder — handle history is owner-read only per spec.
       { name: "member_handle_history", intent: "T2 handle-history owner-read only" },
-      // Why: ADR-16 — affinity rows are owner-only at the row level; cross-
-      // Member access goes through SECURITY DEFINER functions.
-      { name: "member_location_affinities", intent: "ADR-16 affinity row privacy" },
+      // ADR-16 affinity-row privacy retired with T061 (member_location_affinities
+      // dropped per ADR-21). Place-interest equivalent enforced by T062
+      // (member_place_interests); test coverage moves there.
       // Why: agent-assistance substrate — exposing it peer-readable would let
       // bad actors enumerate which Members opted into agent assistance.
       { name: "member_self_records", intent: "Agent-assistance reconnaissance prevention" },
