@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: [],
-    exclude: ['evals/**', 'node_modules/**'],
+    exclude: ['evals/**', 'node_modules/**', '.stryker-tmp/**', 'reports/**'],
   },
   resolve: {
     alias: {

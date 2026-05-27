@@ -79,3 +79,7 @@ Four CI rules apply (per ticket T051; spec at `product/systems/action-layer.md`)
 - **Rule 4 — parameterized SQL.** Inside `.query` / `.rpc` template literals, use `$1, $2` placeholders. Identifier interpolation (`${table}`) requires a TypeScript union/enum and the annotation `// sql-injection-safe: enum-constrained by <TypeName>` placed on or directly above the call.
 
 Run `npm run check:action-layer && npm run lint && npm test -- ci-enforcement rls-coverage` before committing.
+
+## Mutation testing
+
+`npm run mutate` runs Stryker against `src/lib/**` (excluding Supabase clients, `types.ts`, `map-config.ts`). It uses `vitest.stryker.config.ts` — a unit-test-only Vitest config scoped to `src/**/*.test.ts(x)` so stale snapshots in `tests/` do not block a run. Config: `stryker.config.mjs`. TS check uses `tsconfig.stryker.json` (extends base; narrows to `src/`). Local-only at b1; no CI gate. Report writes to `reports/mutation/index.html` (gitignored). Runs in `.stryker-tmp/` (gitignored) — safe to run alongside `npm run test:watch`. Surviving mutants are coverage-quality gaps, not build bugs; address by adding sibling `*.test.ts` files next to the file with the gap.

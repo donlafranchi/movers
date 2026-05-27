@@ -14,3 +14,7 @@ evals/results/
 src/__lint_probe__/
 src/__sql_probe__/
 src/app/api/__probe__/
+
+# T065 — Stryker mutation testing
+reports/mutation/
+.stryker-tmp/

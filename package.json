@@ -12,7 +12,8 @@
     "eval": "playwright test",
     "eval:ui": "playwright test --ui",
     "eval:bootstrap": "tsx scripts/bootstrap-eval-helpers.ts",
-    "check:action-layer": "tsx scripts/check-action-layer-conformance.ts"
+    "check:action-layer": "tsx scripts/check-action-layer-conformance.ts",
+    "mutate": "stryker run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
@@ -29,6 +30,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
