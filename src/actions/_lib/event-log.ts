@@ -11,7 +11,8 @@ import { injectAudit } from './audit'
 
 export type EventTable =
   | 'member_events'
-  // Phase 1 will add: 'item_events' | 'location_events' | 'group_events'
+  | 'group_events'
+  // Phase 1 will add: 'item_events' | 'location_events'
 
 export interface EventRowInput {
   member_id?: string
@@ -72,6 +73,8 @@ function targetColumnFor(table: EventTable): string {
   switch (table) {
     case 'member_events':
       return 'member_id'
+    case 'group_events':
+      return 'group_id'
     default:
       throw new Error(`appendEvent: unknown event table ${table}`)
   }
