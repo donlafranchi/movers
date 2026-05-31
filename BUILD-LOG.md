@@ -1,6 +1,6 @@
 # BUILD-LOG — movers-makers-shakers/web
 
-Last updated: 2026-05-25 (b1.x substrate sprint — T058–T064 substrate + surface code complete; **107/107 sprint unit tests GREEN**; **181/181 Phase 1 evals GREEN**; M2 code-review Approve (2 fixes landed); M4 deploy-checklist drafted at operations/deploy-checklist-b1x.md)
+Last updated: 2026-05-31 (T070 F036 substrate complete on branch t070 — lifecycle_state column + draft-aware RLS + three group action handlers; 40/40 vitest GREEN; M2 code-review REQUEST→PROCEED with TOCTOU + slug-collision fixes landed pre-commit)
 
 Development agent's build progress tracker. Use JOURNAL.md for product/strategy notes.
 
@@ -68,6 +68,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 | T064 | b1.x — `items.made_at_*` columns + event-kind extension (`020_*`) | ✅ Build + eval complete + M2/M4 PROCEED; 8/8 unit tests green. 4-value `made_at_verification_source` enum (includes `community_attested` per ADR-21 reshape) + FK to `places` + `items_made_at_only_on_products` CHECK. Includes doc-patch to `planning/rebuild-plan.md:148` (3-value → 4-value form). |
 | T065 | Stryker mutation testing on `src/lib/` (substrate) | ✅ Tooling landed; `npm run mutate` runs end-to-end. Baseline: **30% total mutation score**, `market-dates.ts` 82.5% (only file with sibling unit tests), 4 others 0%. Runtime ~3 min. Local-only; no CI gate. Surfaces a real coverage gap — follow-up work needed to add unit tests for `slugify.ts`, `categories.ts`, `geocoding.ts`, `action-context.ts`. |
 | T068 | Stryker test-runner scope fix (substrate) | ✅ Config narrowed — `tests/**/*.test.ts(x)` now participates; exclude trimmed to `migrations-*.test.ts` + 5 named pre-existing stale files (deferred to T069). New baseline: **58.05% total mutation score** (was 30%). Per-file: `resolve-path.ts` 72.22% (was 0%), `reverse-geocode.ts` 63.53% (was 0%), `geocoding.ts` 60.00% (was 0%), `slugify.ts` 30.43% (was 0%), `market-dates.ts` 82.50% (unchanged), `action-context.ts` 0%, `categories.ts` 0% (no tests exist — follow-up). Runtime 5m59s (was ~3min). |
+| T070 | Groups lifecycle_state + draft-aware RLS + group.create / .update_draft / .activate handlers (F036 substrate) | ✅ Migration `023_groups_lifecycle_state.sql` (lifecycle_state enum + idx_groups_lifecycle + groups_select_active_or_own_draft RLS + group_events.event_kind extended with group.activated + group.member_removed). Three handlers in `src/actions/group/{create,update-draft,activate}.ts` registered in `src/actions/index.ts`; `_lib/event-log.ts` extended for group_events table. 40/40 vitest tests GREEN (file-shape + Zod validation + registry + source-shape sanity). Action-layer conformance OK. M2 code-review: 2 critical fixes landed pre-commit — TOCTOU re-assertion of lifecycle_state='draft' in both update_draft UPDATEs (spine + group_businesses); random-hex suffix on draft slugs to prevent concurrent-create collisions on the slug UNIQUE constraint. |
 
 ### b1.x substrate sprint summary (2026-05-25 — closing)
 

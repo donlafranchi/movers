@@ -6,10 +6,14 @@
 // import + registry entry.
 
 import { memberCreate } from './member'
+import { groupCreate, groupUpdateDraft, groupActivate } from './group'
 import type { NamedActionHandler } from './_lib/handler'
 
 const REGISTRY: Record<string, NamedActionHandler<unknown, unknown>> = {
   'member.create': memberCreate as unknown as NamedActionHandler<unknown, unknown>,
+  'group.create': groupCreate as unknown as NamedActionHandler<unknown, unknown>,
+  'group.update_draft': groupUpdateDraft as unknown as NamedActionHandler<unknown, unknown>,
+  'group.activate': groupActivate as unknown as NamedActionHandler<unknown, unknown>,
 }
 
 export function getHandler(name: string): NamedActionHandler<unknown, unknown> | null {
@@ -22,6 +26,7 @@ export function listHandlers(): string[] {
 
 // Re-exports for convenience.
 export { memberCreate } from './member'
+export { groupCreate, groupUpdateDraft, groupActivate } from './group'
 export {
   ActionError,
   ValidationError,
