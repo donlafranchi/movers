@@ -87,16 +87,20 @@ export function SellCta({
         if (!cancelled) setSignal({ draftGroup: null, hasActiveBusinessGroup: false })
       }
       // Load saved Locations the user owns (for the anchor picker).
+      // T073a fix-forward: column is `label`, not `display_name` (per
+      // supabase/migrations/007_locations.sql). Original T073 unit test
+      // mocked the supabase client so the wrong column name didn't fail.
       if (!initialLocations) {
         const { data } = await sb
           .from('locations')
-          .select('id, display_name')
+          .select('id, label')
+          .eq('member_id', memberId)
           .limit(20)
         if (!cancelled && data) {
           setLocations(
-            data.map((r: { id: string; display_name: string | null }) => ({
+            data.map((r: { id: string; label: string | null }) => ({
               id: r.id,
-              label: r.display_name ?? 'Untitled Location',
+              label: r.label ?? 'Untitled Location',
             })),
           )
         }
