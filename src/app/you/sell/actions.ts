@@ -141,16 +141,41 @@ export async function sellActivateAction(input: {
  *  via the existing `locations` table the client can refer back to. */
 export async function sellCreateLocationAction(input: {
   label: string
+  /** Optional geography in WKT — caller can stamp from a map picker. */
+  geographyWkt?: string
 }): Promise<{ id: string; label: string }> {
   const memberId = await requireMemberId()
-  void memberId
   // Minimal Location.create — full `location.create` action handler is its
   // own ticket. At b1 we insert directly via RLS so the picker can move.
+  //
+  // T073a fix-forward: insert satisfies the locations spine NOT NULL set
+  // per 007_locations.sql — member_id + kind + label + slug + geography.
+  // Original T073 used `display_name` (doesn't exist) + omitted slug/geo
+  // (NOT NULL) — every inline-add would have raised on the first eval run.
+  //
+  // Slug: derived from the label with a random suffix to satisfy the global
+  // UNIQUE constraint without collision-handling logic.
+  // Geography: defaults to midtown-Sacramento if the caller didn't stamp
+  // one. F036's anchor picker has no map step at b1, so this is the floor.
   const supabase = await createClient()
+  const slug =
+    input.label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) +
+    '-' +
+    Math.random().toString(36).slice(2, 10)
   const { data, error } = await supabase
     .from('locations')
-    .insert({ display_name: input.label, kind: 'permanent' })
-    .select('id, display_name')
+    .insert({
+      member_id: memberId,
+      kind: 'permanent',
+      label: input.label,
+      slug,
+      geography: input.geographyWkt ?? 'SRID=4326;POINT(-121.4944 38.5816)',
+    })
+    .select('id, label')
     .single()
   if (error || !data) {
     throw new SellActionError(
@@ -158,5 +183,5 @@ export async function sellCreateLocationAction(input: {
       'location_create_failed',
     )
   }
-  return { id: data.id, label: data.display_name ?? input.label }
+  return { id: data.id, label: data.label ?? input.label }
 }
