@@ -8,7 +8,7 @@ Development agent's build progress tracker. Use JOURNAL.md for product/strategy 
 
 **Target:** b1 MVP — Producer Marketplace
 **Start Date:** 2026-04-09
-**Bundle definition:** [planning/bundles/b1-mvp.md](../planning/bundles/b1-mvp.md)
+**Bundle definition:** [planning/now/bundle-1.md](../planning/now/bundle-1.md)
 
 ## Progress
 
@@ -147,7 +147,7 @@ Three tickets close the marketplace loop. Recommended order:
 2. **T026** — Vendor founder dashboard. Backs the vendor recruitment pitch.
 3. **T019** — Geocoding + pin confirmation. Trust hardening on registration; can run in parallel with T025/T026.
 
-See [planning/bundles/b1-mvp.md](../planning/bundles/b1-mvp.md) for the full MVP definition and success metrics.
+See [planning/now/bundle-1.md](../planning/now/bundle-1.md) for the full MVP definition and success metrics.
 
 ## Latest Commits
 
