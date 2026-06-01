@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { signIn } from "../helpers/auth";
+import {
+  seedF036Fixture,
+  resetMayaDrafts,
+  MAYA as FIXTURE_MAYA,
+  BAKER_RUTH as FIXTURE_RUTH,
+  type SeededF036Fixture,
+} from "../fixtures/F036-maya";
 
 // F036: A member creates a business Group through the Sell walkthrough
 // Source: planning/scenarios/F036-member-creates-business-group-via-sell-walkthrough.md
@@ -36,6 +43,22 @@ const BAKER_RUTH = {
   handle: "ruth-test",
   existingBusinessGroupName: "Ruth's Bread Co",
 };
+
+// Fixture seed (2026-06-01) — landed by `test` skill follow-up to T073.
+// Seeds Maya + Ruth + their Locations + Ruth's active business Group, with
+// real auth.users + members rows so the UI signIn flow can grant a session.
+// Per-test isolation: Maya's draft Groups are reset before each test.
+let SEEDED: SeededF036Fixture;
+test.beforeAll(async () => {
+  SEEDED = await seedF036Fixture();
+});
+test.beforeEach(async () => {
+  await resetMayaDrafts(SEEDED.maya.memberId);
+});
+// Re-export so existing inline MAYA / BAKER_RUTH references resolve to the
+// fixture's canonical values without rewriting every test body.
+void FIXTURE_MAYA;
+void FIXTURE_RUTH;
 
 test.describe("F036 — Maya creates a business Group through the Sell walkthrough", () => {
   test.describe('"Sell" CTA visible on /you for any Member', () => {
