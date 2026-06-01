@@ -9,6 +9,7 @@ import { useMarket } from '@/components/MarketContext'
 import { MarketSelector } from '@/components/MarketSelector'
 import { VendorCard } from '@/components/VendorCard'
 import { RecruitmentGrid } from '@/components/RecruitmentGrid'
+import { SellCta } from '@/components/sell/SellCta'
 
 type Tab = 'saved' | 'following' | 'settings'
 
@@ -180,6 +181,9 @@ function YouPageInner() {
           </Link>
         )}
       </header>
+
+      {/* T073 — Sell CTA (always-visible, 3-branch routing per F036). */}
+      <SellCta memberId={userId} />
 
       <section className="mt-4 rounded-xl border border-neutral-200 bg-white px-4 py-3 flex items-center justify-between gap-3" data-testid="your-market-row">
         <div className="min-w-0">
