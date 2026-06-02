@@ -21,10 +21,25 @@ export async function signIn(page: Page, email: string, password: string) {
   await page.getByRole('button', { name: /Use email \+ password/i }).click()
   await page.locator('[data-testid="email-input"]').fill(email)
   await page.locator('[data-testid="password-input"]').fill(password)
-  await page.locator('[data-testid="submit-button"]').click()
-  // Login page redirects to `/` (or `?next=` target) on success.
-  await page.waitForURL(
-    (url) => url.pathname === '/' || url.pathname.startsWith('/you'),
-    { timeout: 10000 },
-  )
+
+  // Local GoTrue intermittently returns "Database error querying schema" when a
+  // password grant races other DB load (parallel-worker seeds + concurrent
+  // logins). The token grant itself is healthy (verified via direct /token), so
+  // the submit is idempotent — re-submitting on a non-navigation succeeds. This
+  // retry removes that flake for every suite that signs in (2026-06-02).
+  const navigated = (url: URL) =>
+    url.pathname === '/' || url.pathname.startsWith('/you')
+  let lastErr: unknown
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    await page.locator('[data-testid="submit-button"]').click()
+    try {
+      await page.waitForURL(navigated, { timeout: 8000 })
+      return
+    } catch (err) {
+      lastErr = err
+      // Form stays mounted on a failed grant; pause briefly, then re-submit.
+      await page.waitForTimeout(500)
+    }
+  }
+  throw lastErr
 }
