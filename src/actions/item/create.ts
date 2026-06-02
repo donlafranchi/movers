@@ -65,6 +65,7 @@ export const itemCreateInput = z.object({
   recurrenceRule: z.string().optional(),
   capacity: z.number().int().positive().nullable().optional(),
   costCents: z.number().int().min(0).nullable().optional(),
+  whatToBring: z.string().max(2000).optional(),
 })
 
 export type ItemCreateInput = z.infer<typeof itemCreateInput>
@@ -158,8 +159,8 @@ export const itemCreate = defineHandler(
         // gathering. host_member_id defaults to the creating Member.
         await client.query(
           `insert into public.item_gatherings
-             (item_id, starts_at, ends_at, recurrence_rule, capacity, cost_cents, host_member_id)
-           values ($1, $2, $3, $4, $5, $6, $7)`,
+             (item_id, starts_at, ends_at, recurrence_rule, capacity, cost_cents, what_to_bring, host_member_id)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             itemId,
             input.startsAt ?? null,
@@ -167,6 +168,7 @@ export const itemCreate = defineHandler(
             input.recurrenceRule ?? null,
             input.capacity ?? null,
             input.costCents ?? null,
+            input.whatToBring ?? null,
             input.memberId,
           ],
         )

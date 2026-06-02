@@ -35,6 +35,28 @@ import {
 import { ShopPublicPage } from '@/components/group/ShopPublicPage'
 import { splitItemSlug, resolveProduct } from '@/lib/items/resolve-product'
 import { ProductPublicPage } from '@/components/item/ProductPublicPage'
+import {
+  splitGatheringSlug,
+  resolveGathering,
+  nextOccurrence,
+} from '@/lib/items/resolve-gathering'
+import { GatheringPublicPage } from '@/components/item/GatheringPublicPage'
+
+/** Human-readable next-occurrence date for a gathering (real clock). */
+function gatheringOccurrenceLabel(
+  startsAt: string | null,
+  recurrenceRule: string | null,
+): string | null {
+  const occ = nextOccurrence(startsAt, recurrenceRule, new Date())
+  return occ
+    ? occ.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null
+}
 
 interface Props {
   params: Promise<{ slug: string[] }>
@@ -61,6 +83,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description:
         product.description ||
         `${product.title}${product.brandLabel ? ` from ${product.brandLabel}` : ''}.`,
+    }
+  }
+
+  // Gathering Item page — /p/[…place]/g/[group]/e/[item]. Like the product
+  // dispatch, checked before the Group split (the `/e/` marker distinguishes it
+  // from the product `/p/` and the bare Shop page).
+  const gatheringSplit = splitGatheringSlug(slug)
+  if (gatheringSplit) {
+    const gathering = await resolveGathering(supabase, {
+      groupSlug: gatheringSplit.groupSlug,
+      itemSlug: gatheringSplit.itemSlug,
+    })
+    if (!gathering) {
+      return { title: 'Not found — Movers, Makers & Shakers' }
+    }
+    return {
+      title: `${gathering.title} — Movers, Makers & Shakers`,
+      description:
+        gathering.description ||
+        `${gathering.title}${gathering.brandLabel ? ` at ${gathering.brandLabel}` : ''}.`,
     }
   }
 
@@ -111,6 +153,33 @@ export default async function PlacePage({ params }: Props) {
     }
     const groupHref = `/p/${itemSplit.placeSegments.join('/')}/g/${itemSplit.groupSlug}`
     return <ProductPublicPage product={product} groupHref={groupHref} />
+  }
+
+  // Gathering Item page dispatch — /p/[…place]/g/[group]/e/[item]. Checked
+  // before the Group split. RLS (items_select_published) is the visibility gate.
+  const gatheringSplit = splitGatheringSlug(slug)
+  if (gatheringSplit) {
+    const gathering = await resolveGathering(supabase, {
+      groupSlug: gatheringSplit.groupSlug,
+      itemSlug: gatheringSplit.itemSlug,
+    })
+    if (!gathering) {
+      notFound()
+    }
+    const placePath = gatheringSplit.placeSegments.join('/')
+    const groupHref = `/p/${placePath}/g/${gatheringSplit.groupSlug}`
+    const shareUrl = `${groupHref}/e/${gatheringSplit.itemSlug}`
+    return (
+      <GatheringPublicPage
+        gathering={gathering}
+        groupHref={groupHref}
+        nextOccurrenceLabel={gatheringOccurrenceLabel(
+          gathering.startsAt,
+          gathering.recurrenceRule,
+        )}
+        shareUrl={shareUrl}
+      />
+    )
   }
 
   // Group (Shop) page dispatch — see generateMetadata comment + T060 DEVIATION.
