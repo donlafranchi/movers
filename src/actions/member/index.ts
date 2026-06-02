@@ -33,3 +33,17 @@ export {
   memberSavedSearchRemoveInput,
   type MemberSavedSearchRemoveInput,
 } from './saved-search-remove'
+
+// T075 — Business-jurisdiction handlers (Tier 0, self-attested)
+export {
+  memberBusinessJurisdictionSet,
+  memberBusinessJurisdictionSetInput,
+  type MemberBusinessJurisdictionSetInput,
+  type MemberBusinessJurisdictionSetResult,
+} from './business-jurisdiction-set'
+export {
+  memberBusinessJurisdictionRemove,
+  memberBusinessJurisdictionRemoveInput,
+  type MemberBusinessJurisdictionRemoveInput,
+  type MemberBusinessJurisdictionRemoveResult,
+} from './business-jurisdiction-remove'

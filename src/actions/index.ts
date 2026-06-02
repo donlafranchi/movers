@@ -5,7 +5,11 @@
 // this to dispatch action invocations. Adding a new handler is two lines:
 // import + registry entry.
 
-import { memberCreate } from './member'
+import {
+  memberCreate,
+  memberBusinessJurisdictionSet,
+  memberBusinessJurisdictionRemove,
+} from './member'
 import { groupCreate, groupUpdateDraft, groupActivate } from './group'
 import { itemCreate, itemPublish, itemAttachLocation } from './item'
 import type { NamedActionHandler } from './_lib/handler'
@@ -18,6 +22,8 @@ const REGISTRY: Record<string, NamedActionHandler<unknown, unknown>> = {
   'item.create': itemCreate as unknown as NamedActionHandler<unknown, unknown>,
   'item.publish': itemPublish as unknown as NamedActionHandler<unknown, unknown>,
   'item.attach_location': itemAttachLocation as unknown as NamedActionHandler<unknown, unknown>,
+  'member.business_jurisdiction.set': memberBusinessJurisdictionSet as unknown as NamedActionHandler<unknown, unknown>,
+  'member.business_jurisdiction.remove': memberBusinessJurisdictionRemove as unknown as NamedActionHandler<unknown, unknown>,
 }
 
 export function getHandler(name: string): NamedActionHandler<unknown, unknown> | null {
