@@ -35,6 +35,8 @@ import {
 import { ShopPublicPage } from '@/components/group/ShopPublicPage'
 import { splitItemSlug, resolveProduct } from '@/lib/items/resolve-product'
 import { ProductPublicPage } from '@/components/item/ProductPublicPage'
+import { splitServiceSlug, resolveService } from '@/lib/items/resolve-service'
+import { ServicePublicPage } from '@/components/item/ServicePublicPage'
 
 interface Props {
   params: Promise<{ slug: string[] }>
@@ -61,6 +63,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description:
         product.description ||
         `${product.title}${product.brandLabel ? ` from ${product.brandLabel}` : ''}.`,
+    }
+  }
+
+  // Service Item page — /p/[…place]/g/[group]/s/[item]. Like the product
+  // dispatch, checked before the Group split (the `/s/` marker distinguishes
+  // it from product `/p/` and the bare Shop page).
+  const serviceSplit = splitServiceSlug(slug)
+  if (serviceSplit) {
+    const service = await resolveService(supabase, {
+      groupSlug: serviceSplit.groupSlug,
+      itemSlug: serviceSplit.itemSlug,
+    })
+    if (!service) {
+      return { title: 'Not found — Movers, Makers & Shakers' }
+    }
+    return {
+      title: `${service.title} — Movers, Makers & Shakers`,
+      description:
+        service.description ||
+        `${service.title}${service.brandLabel ? ` from ${service.brandLabel}` : ''}.`,
     }
   }
 
@@ -111,6 +133,21 @@ export default async function PlacePage({ params }: Props) {
     }
     const groupHref = `/p/${itemSplit.placeSegments.join('/')}/g/${itemSplit.groupSlug}`
     return <ProductPublicPage product={product} groupHref={groupHref} />
+  }
+
+  // Service Item page dispatch — /p/[…place]/g/[group]/s/[item]. Checked before
+  // the Group split. RLS (items_select_published) is the visibility gate.
+  const serviceSplit = splitServiceSlug(slug)
+  if (serviceSplit) {
+    const service = await resolveService(supabase, {
+      groupSlug: serviceSplit.groupSlug,
+      itemSlug: serviceSplit.itemSlug,
+    })
+    if (!service) {
+      notFound()
+    }
+    const groupHref = `/p/${serviceSplit.placeSegments.join('/')}/g/${serviceSplit.groupSlug}`
+    return <ServicePublicPage service={service} groupHref={groupHref} />
   }
 
   // Group (Shop) page dispatch — see generateMetadata comment + T060 DEVIATION.

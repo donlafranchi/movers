@@ -58,6 +58,13 @@ export const itemCreateInput = z.object({
   // --- kind='service' child (item_services); F040 territory ---
   rateModel: z.enum(RATE_MODELS).optional(),
   rateCents: z.number().int().min(0).nullable().optional(),
+  // Service area as a radius-from-point circle (T081). When all three are
+  // present, item_services.service_area_geography is generated server-side as
+  // a PostGIS buffer; otherwise the column stays null. Center comes from the
+  // composer's chosen Location coords; radius is miles→meters in the action.
+  serviceAreaCenterLat: z.number().min(-90).max(90).optional(),
+  serviceAreaCenterLon: z.number().min(-180).max(180).optional(),
+  serviceAreaRadiusMeters: z.number().positive().optional(),
 
   // --- kind='gathering' child (item_gatherings); F034 territory ---
   startsAt: z.string().optional(),
@@ -149,11 +156,38 @@ export const itemCreate = defineHandler(
           ],
         )
       } else if (input.kind === 'service') {
-        await client.query(
-          `insert into public.item_services (item_id, rate_model, rate_cents)
-           values ($1, $2, $3)`,
-          [itemId, input.rateModel ?? 'quote', input.rateCents ?? null],
-        )
+        // rate_model defaults to 'quote'; rate_cents null = free or quote.
+        // (F040 Data-Captured lists flat/hourly/per-session/free; the shipped
+        // CHECK is hourly/flat/quote/membership — we honor the durable schema,
+        // 'free' modeled as rate_cents null. See T081 DEVIATIONS + SPEC-PATCHES.)
+        const hasArea =
+          input.serviceAreaCenterLat != null &&
+          input.serviceAreaCenterLon != null &&
+          input.serviceAreaRadiusMeters != null
+        if (hasArea) {
+          // service_area_geography = a circle: buffer (meters) around the
+          // center point. ST_Buffer on geography returns geography(Polygon).
+          await client.query(
+            `insert into public.item_services
+               (item_id, rate_model, rate_cents, service_area_geography)
+             values ($1, $2, $3,
+               st_buffer(st_setsrid(st_makepoint($4, $5), 4326)::geography, $6))`,
+            [
+              itemId,
+              input.rateModel ?? 'quote',
+              input.rateCents ?? null,
+              input.serviceAreaCenterLon,
+              input.serviceAreaCenterLat,
+              input.serviceAreaRadiusMeters,
+            ],
+          )
+        } else {
+          await client.query(
+            `insert into public.item_services (item_id, rate_model, rate_cents)
+             values ($1, $2, $3)`,
+            [itemId, input.rateModel ?? 'quote', input.rateCents ?? null],
+          )
+        }
       } else {
         // gathering. host_member_id defaults to the creating Member.
         await client.query(
