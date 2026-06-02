@@ -33,6 +33,8 @@ import {
   resolveLocalOwnerBadge,
 } from '@/lib/groups/resolve-shop'
 import { ShopPublicPage } from '@/components/group/ShopPublicPage'
+import { splitItemSlug, resolveProduct } from '@/lib/items/resolve-product'
+import { ProductPublicPage } from '@/components/item/ProductPublicPage'
 
 interface Props {
   params: Promise<{ slug: string[] }>
@@ -41,6 +43,26 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const supabase = await createClient()
+
+  // Product Item page — /p/[…place]/g/[group]/p/[item]. Checked before the
+  // Group split (which would otherwise match the group segment and ignore the
+  // trailing /p/<item>). Per T060 DEVIATION, all nested dispatch folds here.
+  const itemSplit = splitItemSlug(slug)
+  if (itemSplit) {
+    const product = await resolveProduct(supabase, {
+      groupSlug: itemSplit.groupSlug,
+      itemSlug: itemSplit.itemSlug,
+    })
+    if (!product) {
+      return { title: 'Not found — Movers, Makers & Shakers' }
+    }
+    return {
+      title: `${product.title} — Movers, Makers & Shakers`,
+      description:
+        product.description ||
+        `${product.title}${product.brandLabel ? ` from ${product.brandLabel}` : ''}.`,
+    }
+  }
 
   // Group (Shop) page — /p/[…place]/g/[slug]. Per T060 DEVIATION, the Group
   // dispatch folds into this catch-all (Next.js forbids a static segment after
@@ -75,6 +97,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PlacePage({ params }: Props) {
   const { slug } = await params
   const supabase = await createClient()
+
+  // Product Item page dispatch — /p/[…place]/g/[group]/p/[item]. Checked before
+  // the Group split. RLS (items_select_published) is the visibility gate.
+  const itemSplit = splitItemSlug(slug)
+  if (itemSplit) {
+    const product = await resolveProduct(supabase, {
+      groupSlug: itemSplit.groupSlug,
+      itemSlug: itemSplit.itemSlug,
+    })
+    if (!product) {
+      notFound()
+    }
+    const groupHref = `/p/${itemSplit.placeSegments.join('/')}/g/${itemSplit.groupSlug}`
+    return <ProductPublicPage product={product} groupHref={groupHref} />
+  }
 
   // Group (Shop) page dispatch — see generateMetadata comment + T060 DEVIATION.
   const groupSplit = splitGroupSlug(slug)
