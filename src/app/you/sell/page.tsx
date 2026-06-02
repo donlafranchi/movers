@@ -2,13 +2,38 @@
 // Spec:   T073 § Acceptance Criteria — third routing branch.
 //
 // Thin b1 surface. Lists the caller's active kind='business' Group(s) and
-// shows an "Add a product" CTA per Group. Product, service, and gathering
-// composers are F038 / F040 / F034 — not this ticket. The CTAs route to
-// `#` placeholders at b1; they wire up when those composers land.
+// shows a per-Group composer row. T080 made that row data-driven: each kind's
+// composer is one entry in COMPOSERS, so F040 (service) and F034 (gathering)
+// append their button without editing the shop-list JSX. F038 product ships now.
 
+import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { AddProductButton } from '@/components/sell/AddProductButton'
+
+// Per-Group composer entry. F040/F034 each add one entry here.
+interface ComposerEntryProps {
+  groupId: string
+  groupName: string
+  anchorLocationId: string | null
+  anchorLocationLabel: string | null
+}
+
+const COMPOSERS: { key: string; render: (p: ComposerEntryProps) => ReactNode }[] = [
+  {
+    key: 'product',
+    // T078 (F038). Keeps role=button + /Add a product/i accessible name the eval relies on.
+    render: (p) => (
+      <AddProductButton
+        groupId={p.groupId}
+        groupName={p.groupName}
+        anchorLocationId={p.anchorLocationId}
+        anchorLocationLabel={p.anchorLocationLabel}
+      />
+    ),
+  },
+  // F040 — AddServiceButton · F034 — AddGatheringButton append here.
+]
 
 export default async function SellIndexPage() {
   const supabase = await createClient()
@@ -85,26 +110,28 @@ export default async function SellIndexPage() {
               <p className="font-medium truncate">{row.groups.name}</p>
               <p className="text-xs text-neutral-500">Active shop</p>
             </div>
-            <div className="flex items-center gap-2">
-              {/* T078 (F038): the real product composer. Keeps role=button +
-                  /Add a product/i accessible name the eval relies on. */}
-              <AddProductButton
-                groupId={row.group_id}
-                groupName={row.groups.name}
-                anchorLocationId={row.groups.anchor_location_id}
-                anchorLocationLabel={
-                  row.groups.anchor_location_id
-                    ? anchorLabels.get(row.groups.anchor_location_id) ?? null
-                    : null
-                }
-              />
+            <div
+              className="flex items-center gap-2"
+              data-testid={`you-sell-composers-${row.group_id}`}
+            >
+              {COMPOSERS.map((c) => (
+                <span key={c.key}>
+                  {c.render({
+                    groupId: row.group_id,
+                    groupName: row.groups.name,
+                    anchorLocationId: row.groups.anchor_location_id,
+                    anchorLocationLabel: row.groups.anchor_location_id
+                      ? anchorLabels.get(row.groups.anchor_location_id) ?? null
+                      : null,
+                  })}
+                </span>
+              ))}
             </div>
           </li>
         ))}
       </ul>
 
       <p className="mt-6 text-xs text-neutral-500">
-        Service and gathering composers land in upcoming bundles (F040, F034).
         Multi-owner partnership Groups land in b2.
       </p>
     </main>
