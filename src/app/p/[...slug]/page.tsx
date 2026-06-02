@@ -26,6 +26,13 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase-server'
 import { resolvePlacePath } from '@/lib/places/resolve-path'
 import { PlaceBreadcrumb } from '@/components/place-breadcrumb'
+import {
+  splitGroupSlug,
+  resolveShop,
+  resolveShopItems,
+  resolveLocalOwnerBadge,
+} from '@/lib/groups/resolve-shop'
+import { ShopPublicPage } from '@/components/group/ShopPublicPage'
 
 interface Props {
   params: Promise<{ slug: string[] }>
@@ -34,6 +41,23 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const supabase = await createClient()
+
+  // Group (Shop) page — /p/[…place]/g/[slug]. Per T060 DEVIATION, the Group
+  // dispatch folds into this catch-all (Next.js forbids a static segment after
+  // a catch-all).
+  const groupSplit = splitGroupSlug(slug)
+  if (groupSplit) {
+    const shop = await resolveShop(supabase, groupSplit.groupSlug)
+    if (!shop) {
+      return { title: 'Not found — Movers, Makers & Shakers' }
+    }
+    return {
+      title: `${shop.displayName} — Movers, Makers & Shakers`,
+      description:
+        shop.publicDescription || `${shop.displayName} on Movers, Makers & Shakers.`,
+    }
+  }
+
   const resolved = await resolvePlacePath(supabase, slug)
   if (!resolved) {
     return { title: 'Place not found — Movers, Makers & Shakers' }
@@ -51,6 +75,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PlacePage({ params }: Props) {
   const { slug } = await params
   const supabase = await createClient()
+
+  // Group (Shop) page dispatch — see generateMetadata comment + T060 DEVIATION.
+  const groupSplit = splitGroupSlug(slug)
+  if (groupSplit) {
+    // RLS (T070 groups_select_active_or_own_draft) is the visibility gate:
+    // a draft / dissolved / nonexistent slug yields no row → 404 to non-owners;
+    // a returned 'draft' row implies the viewer is the founder → owner preview.
+    const shop = await resolveShop(supabase, groupSplit.groupSlug)
+    if (!shop || shop.lifecycleState === 'dissolved') {
+      notFound()
+    }
+    const [items, badge, { data: auth }] = await Promise.all([
+      resolveShopItems(supabase, shop.groupId),
+      resolveLocalOwnerBadge(supabase, {
+        groupId: shop.groupId,
+        anchorLocationId: shop.anchorLocationId,
+      }),
+      supabase.auth.getUser(),
+    ])
+    return (
+      <ShopPublicPage
+        shop={shop}
+        items={items}
+        badge={badge}
+        loggedIn={Boolean(auth.user)}
+      />
+    )
+  }
+
   const resolved = await resolvePlacePath(supabase, slug)
 
   if (!resolved) {
