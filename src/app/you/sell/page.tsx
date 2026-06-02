@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { AddProductButton } from '@/components/sell/AddProductButton'
 import { AddServiceButton } from '@/components/sell/AddServiceButton'
+import { AddGatheringButton } from '@/components/sell/AddGatheringButton'
 
 // Per-Group composer entry. F040/F034 each add one entry here.
 interface ComposerEntryProps {
@@ -45,7 +46,18 @@ const COMPOSERS: { key: string; render: (p: ComposerEntryProps) => ReactNode }[]
       />
     ),
   },
-  // F034 — AddGatheringButton appends here.
+  {
+    key: 'gathering',
+    // T084 (F034). Accessible name /Host a gathering/i.
+    render: (p) => (
+      <AddGatheringButton
+        groupId={p.groupId}
+        groupName={p.groupName}
+        anchorLocationId={p.anchorLocationId}
+        anchorLocationLabel={p.anchorLocationLabel}
+      />
+    ),
+  },
 ]
 
 export default async function SellIndexPage() {
