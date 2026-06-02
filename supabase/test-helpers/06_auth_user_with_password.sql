@@ -59,6 +59,10 @@ begin
   -- can all pass the SELECT-first check and then race the insert; without
   -- the catch, two of them die on the partial-unique users_email_partial_key.
   begin
+    -- GoTrue v2.189 Go structs require non-NULL string fields for the
+    -- token columns. NULL → "Scan error … converting NULL to string is
+    -- unsupported" on /token. Stamp empty strings defensively even
+    -- though the column schema allows NULL.
     insert into auth.users (
       id,
       instance_id,
@@ -70,7 +74,15 @@ begin
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
-      updated_at
+      updated_at,
+      confirmation_token,
+      recovery_token,
+      email_change_token_new,
+      email_change,
+      email_change_token_current,
+      reauthentication_token,
+      phone_change,
+      phone_change_token
     )
     values (
       p_id,
@@ -83,7 +95,15 @@ begin
       '{"provider":"email","providers":["email"]}'::jsonb,
       '{}'::jsonb,
       now(),
-      now()
+      now(),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      ''
     );
   exception
     when unique_violation then
