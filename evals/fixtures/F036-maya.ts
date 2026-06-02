@@ -84,51 +84,66 @@ async function ensureAuthUser(opts: {
   password: string
   displayName: string
 }): Promise<string> {
+  // The eval_seed_auth_user_with_password RPC (06_*.sql) is the lookup-
+  // or-create primitive — it returns the existing id if email collides,
+  // otherwise stamps a new row with a bcrypt-hashed password GoTrue
+  // accepts at /auth/login. PostgREST won't expose the auth schema, so
+  // this RPC is the only path to read/write auth.users from JS.
+  const id = randomUUID()
   const sb = adminClient()
-  // listUsers is paginated; for fixture seeds the test DB is small enough that
-  // page 1 covers all eval users. If the project grows past 1k eval users, swap
-  // for a direct query on auth.users via service role.
-  const { data: list, error: listErr } = await sb.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
+  const { data, error } = await sb.rpc('eval_seed_auth_user_with_password', {
+    p_id: id,
+    p_email: opts.email,
+    p_password: opts.password,
   })
-  if (listErr) {
-    throw new Error(`ensureAuthUser: listUsers failed: ${listErr.message}`)
-  }
-  const existing = list.users.find(
-    (u: { email?: string | null }) => u.email === opts.email,
-  )
-  if (existing) return existing.id
-
-  const { data: created, error: createErr } = await sb.auth.admin.createUser({
-    email: opts.email,
-    password: opts.password,
-    email_confirm: true,
-    user_metadata: { display_name: opts.displayName },
-  })
-  if (createErr || !created.user) {
+  if (error) {
     throw new Error(
-      `ensureAuthUser: createUser(${opts.email}) failed: ${createErr?.message ?? 'no user returned'}`,
+      `ensureAuthUser(${opts.email}): eval_seed_auth_user_with_password failed: ${error.message}`,
     )
   }
-  return created.user.id
+  // displayName carries to members.display_name in ensureMember.
+  void opts.displayName
+  // RPC returns the id of the row (existing or new).
+  return (data as string | null) ?? id
 }
 
-/** Ensure a `members` row exists for the auth user. The signup hook normally
- *  drives `member.create` on signup; for already-existing auth users (re-seeds)
- *  the hook may have run before the helper rolled in — so we upsert. */
+/** Lookup-by-handle path. members.handle is UNIQUE and is the cross-test
+ *  stable identifier; auth.users.id may have rotated between runs (eval
+ *  re-runs after partial cleanups). Returns the canonical member id if a
+ *  row exists for the handle. */
+async function lookupMemberByHandle(handle: string): Promise<string | null> {
+  const sb = adminClient()
+  const { data, error } = await sb
+    .from('members')
+    .select('id')
+    .eq('handle', handle)
+    .maybeSingle()
+  if (error) {
+    throw new Error(`lookupMemberByHandle(${handle}): ${error.message}`)
+  }
+  return data?.id ?? null
+}
+
+/** Ensure a `members` row exists for the auth user.
+ *
+ *  Stable-handle invariant: the spec's MAYA / BAKER_RUTH handles are the
+ *  cross-run identity. If a member exists with the target handle, we keep
+ *  its id and ensure auth.users matches; otherwise we insert with the new
+ *  auth id. This handles the common eval-rerun case where auth.users got
+ *  wiped between runs but the members row survived. */
 async function ensureMember(opts: {
   authUserId: string
   handle: string
   displayName: string
 }): Promise<string> {
   const sb = adminClient()
-  const { data: existing } = await sb
+  // Same auth id → already seeded.
+  const { data: byId } = await sb
     .from('members')
     .select('id')
     .eq('id', opts.authUserId)
     .maybeSingle()
-  if (existing) return existing.id
+  if (byId) return byId.id
 
   const { data, error } = await sb
     .from('members')
@@ -248,17 +263,48 @@ async function ensureActiveBusinessGroup(opts: {
   return id
 }
 
+/** Resolve the canonical id for a fixture identity. If a member exists with
+ *  the target handle, that's the canonical id; we make sure auth.users has
+ *  a row with that id (recreating if needed). Otherwise, ensureAuthUser
+ *  creates a new id and ensureMember writes the matching members row. This
+ *  cross-references the two tables so eval re-runs survive partial cleanups. */
+async function ensureIdentity(opts: {
+  email: string
+  password: string
+  handle: string
+  displayName: string
+}): Promise<string> {
+  const memberId = await lookupMemberByHandle(opts.handle)
+  if (memberId) {
+    // Ensure auth.users has a row with this id (cleanup may have wiped it).
+    const sb = adminClient()
+    await sb.rpc('eval_seed_auth_user_with_password', {
+      p_id: memberId,
+      p_email: opts.email,
+      p_password: opts.password,
+    })
+    return memberId
+  }
+  const authId = await ensureAuthUser({
+    email: opts.email,
+    password: opts.password,
+    displayName: opts.displayName,
+  })
+  await ensureMember({
+    authUserId: authId,
+    handle: opts.handle,
+    displayName: opts.displayName,
+  })
+  return authId
+}
+
 /** Seed Maya + Ruth + their Locations + Ruth's active business Group.
  *  Call from `test.beforeAll` in F036.spec.ts. Idempotent across reruns. */
 export async function seedF036Fixture(): Promise<SeededF036Fixture> {
   // Maya — fresh Seller.
-  const mayaId = await ensureAuthUser({
+  const mayaId = await ensureIdentity({
     email: MAYA.email,
     password: MAYA.password,
-    displayName: MAYA.displayName,
-  })
-  await ensureMember({
-    authUserId: mayaId,
     handle: MAYA.handle,
     displayName: MAYA.displayName,
   })
@@ -268,13 +314,9 @@ export async function seedF036Fixture(): Promise<SeededF036Fixture> {
   })
 
   // Ruth — existing Seller with one active business Group.
-  const ruthId = await ensureAuthUser({
+  const ruthId = await ensureIdentity({
     email: BAKER_RUTH.email,
     password: BAKER_RUTH.password,
-    displayName: BAKER_RUTH.displayName,
-  })
-  await ensureMember({
-    authUserId: ruthId,
     handle: BAKER_RUTH.handle,
     displayName: BAKER_RUTH.displayName,
   })
