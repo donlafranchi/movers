@@ -6,7 +6,6 @@
 // composers are F038 / F040 / F034 — not this ticket. The CTAs route to
 // `#` placeholders at b1; they wire up when those composers land.
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 
@@ -62,14 +61,20 @@ export default async function SellIndexPage() {
               <p className="text-xs text-neutral-500">Active shop</p>
             </div>
             <div className="flex items-center gap-2">
-              <Link
-                href={`#`}
+              {/* T073b: must be role=button (not link) — eval expects
+                  `getByRole('button', { name: /Add a product|Add an item/i })`.
+                  The product composer (F038) lands the real surface; until
+                  then this button is intentionally inert (disabled). */}
+              <button
+                type="button"
+                disabled
                 data-testid={`you-sell-add-product-${row.group_id}`}
-                className="btn-secondary text-sm"
+                className="btn-secondary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 aria-label={`Add a product to ${row.groups.name}`}
+                title="Product composer ships with F038"
               >
                 Add a product
-              </Link>
+              </button>
             </div>
           </li>
         ))}

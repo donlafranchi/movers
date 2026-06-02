@@ -206,7 +206,7 @@ describe('SellWalkthrough — step 3 About (optional)', () => {
       screen.getByRole('heading', { name: /^About$/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /Skip this step/i }),
+      screen.getByRole('link', { name: /Skip this step/i }),
     ).toBeInTheDocument()
   })
 
@@ -232,7 +232,7 @@ describe('SellWalkthrough — step 4 Locality (Tier 0, optional, UI-only)', () =
     await clickContinue()
     fireEvent.click(screen.getByTestId('sell-anchor-option-loc-1'))
     await clickContinue()
-    fireEvent.click(screen.getByRole('button', { name: /Skip this step/i }))
+    fireEvent.click(screen.getByRole('link', { name: /Skip this step/i }))
   }
 
   it('renders the Locality step with Skip', async () => {
@@ -242,7 +242,7 @@ describe('SellWalkthrough — step 4 Locality (Tier 0, optional, UI-only)', () =
       screen.getByRole('heading', { name: /locally owned/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /Skip this step/i }),
+      screen.getByRole('link', { name: /Skip this step/i }),
     ).toBeInTheDocument()
   })
 
@@ -277,8 +277,8 @@ describe('SellWalkthrough — step 5 Review & activate', () => {
     await clickContinue()
     fireEvent.click(screen.getByTestId('sell-anchor-option-loc-1'))
     await clickContinue()
-    fireEvent.click(screen.getByRole('button', { name: /Skip this step/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Skip this step/i }))
+    fireEvent.click(screen.getByRole('link', { name: /Skip this step/i }))
+    fireEvent.click(screen.getByRole('link', { name: /Skip this step/i }))
   }
 
   it('renders the review list with brand, anchor, about, locality summaries', async () => {

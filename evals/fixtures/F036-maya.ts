@@ -298,9 +298,47 @@ async function ensureIdentity(opts: {
   return authId
 }
 
+/** Ensure the Oak Park `places` row carries a geography polygon so
+ *  `public.place_for_coords()` can resolve coordinates inside Oak Park to
+ *  the place. T058's seed only stamps the name/parent hierarchy — none of
+ *  the places have geography polygons in the local dev DB, which means
+ *  `sellActivateAction`'s URL builder can never resolve. We stamp a tiny
+ *  bounding-box polygon around Oak Park's nominal centroid so the
+ *  walkthrough's redirect lands at /p/ca/sacramento/oak-park/g/[slug].
+ *
+ *  Forward-dep: the real polygon seed lives in T058's substrate work that
+ *  has not shipped — see DEVIATIONS for the SPEC-PATCHES entry. This
+ *  fixture stamp is a localized workaround so F036 evals can verify the
+ *  URL shape Maya is supposed to land on. */
+async function ensureOakParkPolygon(): Promise<void> {
+  const sb = adminClient()
+  const { data: existing } = await sb
+    .from('places')
+    .select('id, geography')
+    .eq('slug', 'oak-park')
+    .maybeSingle()
+  if (!existing) {
+    throw new Error(
+      'ensureOakParkPolygon: oak-park place row missing; T058 seed must run first',
+    )
+  }
+  if (existing.geography) return
+  // ~1-mile bounding box around midtown Sacramento (38.5816 N, -121.4944 W).
+  const wkt =
+    'SRID=4326;MULTIPOLYGON(((-121.510 38.570, -121.480 38.570, -121.480 38.595, -121.510 38.595, -121.510 38.570)))'
+  const { error } = await sb
+    .from('places')
+    .update({ geography: wkt })
+    .eq('id', existing.id)
+  if (error) {
+    throw new Error(`ensureOakParkPolygon: update failed: ${error.message}`)
+  }
+}
+
 /** Seed Maya + Ruth + their Locations + Ruth's active business Group.
  *  Call from `test.beforeAll` in F036.spec.ts. Idempotent across reruns. */
 export async function seedF036Fixture(): Promise<SeededF036Fixture> {
+  await ensureOakParkPolygon()
   // Maya — fresh Seller.
   const mayaId = await ensureIdentity({
     email: MAYA.email,
@@ -351,5 +389,33 @@ export async function resetMayaDrafts(mayaMemberId: string): Promise<void> {
     .eq('lifecycle_state', 'draft')
   if (error) {
     throw new Error(`resetMayaDrafts: ${error.message}`)
+  }
+  // T073b fix-forward: also clear ACTIVE business Groups Maya completed in
+  // earlier tests. The :112 walkthrough test creates an active Shop; without
+  // this, downstream tests inherit "active business Group" state and the
+  // CTA routes to /you/sell instead of opening the walkthrough.
+  //
+  // group_memberships + group_businesses ride FK ON DELETE CASCADE so a
+  // simple groups delete cascades correctly.
+  const { error: activeErr } = await sb
+    .from('groups')
+    .delete()
+    .eq('founder_member_id', mayaMemberId)
+    .eq('kind', 'business')
+    .eq('lifecycle_state', 'active')
+  if (activeErr) {
+    throw new Error(`resetMayaDrafts (active sweep): ${activeErr.message}`)
+  }
+  // T073b fix-forward: also clear Maya's user-created Locations from
+  // prior runs (everything except the canonical seed). Without this, the
+  // inline-add eval (:327) accumulates an "Oak Park Home Kitchen" row
+  // per test run and the locator hits strict-mode violations on retry.
+  const { error: locErr } = await sb
+    .from('locations')
+    .delete()
+    .eq('member_id', mayaMemberId)
+    .neq('label', MAYA.savedLocationName)
+  if (locErr) {
+    throw new Error(`resetMayaDrafts (locations sweep): ${locErr.message}`)
   }
 }
