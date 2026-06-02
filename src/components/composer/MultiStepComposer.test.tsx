@@ -199,15 +199,15 @@ describe('T071 — <MultiStepComposer> base', () => {
       />,
     )
     // Step 1 (brand) — no Skip
-    expect(screen.queryByRole('button', { name: /Skip this step/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Skip this step/i })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
     await waitFor(() => expect(screen.getByText('Anchor Location')).toBeInTheDocument())
     // Step 2 (anchor, required) — no Skip
-    expect(screen.queryByRole('button', { name: /Skip this step/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Skip this step/i })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
     await waitFor(() => expect(screen.getByText('About (optional)')).toBeInTheDocument())
     // Step 3 (about, optional) — Skip visible
-    const skip = screen.getByRole('button', { name: /Skip this step/i })
+    const skip = screen.getByRole('link', { name: /Skip this step/i })
     fireEvent.click(skip)
     await waitFor(() => expect(screen.getByText('Review and create')).toBeInTheDocument())
   })

@@ -133,7 +133,6 @@ export function SellWalkthrough({
           <span className="text-sm font-medium text-[--color-fg]">Brand name</span>
           <input
             data-testid="sell-brand-input"
-            aria-label="Brand name"
             className="input mt-1 w-full"
             placeholder="Oak Park Sourdough"
             value={state.brand}
@@ -361,6 +360,9 @@ export function SellWalkthrough({
       onAdvance={onAdvance}
       onComplete={onComplete}
       onAbandon={onAbandon}
+      // T073b: dialog accessible name must NOT match any step input's label
+      // (e.g. "Brand name") or Playwright's getByLabel resolves to both.
+      dialogLabel="Set up your shop"
     />
   )
 }
@@ -391,6 +393,15 @@ function AnchorLocationStep({
   createLocation: (input: { label: string }) => Promise<{ id: string; label: string }>
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // T073b fix-forward: track Locations the user creates inline so the
+  // picker shows them post-save. AddEntityDrawer.onSaved only hands back
+  // the new id, not the label — without local state the auto-selected
+  // entry has nothing visible to confirm the save. Eval :327 asserts the
+  // label text is rendered after the drawer closes.
+  const [addedLocations, setAddedLocations] = useState<AnchorLocationOption[]>(
+    [],
+  )
+  const allOptions: AnchorLocationOption[] = [...available, ...addedLocations]
 
   return (
     <div>
@@ -400,7 +411,7 @@ function AnchorLocationStep({
         data-testid="sell-anchor-options"
         className="space-y-2"
       >
-        {available.map((loc) => {
+        {allOptions.map((loc) => {
           const selected = state.anchorLocationId === loc.id
           return (
             <li key={loc.id}>
@@ -470,26 +481,27 @@ function AnchorLocationStep({
           }
           onSave={async (s) => {
             const created = await createLocation({ label: s.label.trim() })
+            // Append to local options so the picker renders it immediately
+            // and the post-save selection has a visible label. Per DLS:
+            // parent composer stays paused at this step with the new entity
+            // pre-selected so the user just taps Continue.
+            setAddedLocations((prev) =>
+              prev.some((l) => l.id === created.id)
+                ? prev
+                : [...prev, { id: created.id, label: created.label }],
+            )
+            setState({
+              ...state,
+              anchorLocationId: created.id,
+              anchorLocationLabel: created.label,
+            })
             return { id: created.id }
           }}
           onCancel={() => setDrawerOpen(false)}
-          onSaved={(newId) => {
-            // Per DLS: parent stays paused at the picker step; the new entity
-            // auto-selects so the user can just tap Continue.
-            const created = available.find((l) => l.id === newId)
-            const label =
-              created?.label ??
-              // The new Location's label isn't in availableLocations yet
-              // (the picker's options come from the parent's snapshot).
-              // We optimistically set the label from the local form input;
-              // the production caller (/you Sell flow) refreshes the
-              // options list after onSaved by re-fetching.
-              ''
-            setState({
-              ...state,
-              anchorLocationId: newId,
-              anchorLocationLabel: label || state.anchorLocationLabel,
-            })
+          onSaved={() => {
+            // Selection + options-list extension already happened in onSave
+            // (so the picker re-renders with the new row by the time the
+            // drawer unmounts). Just close.
             setDrawerOpen(false)
           }}
         />

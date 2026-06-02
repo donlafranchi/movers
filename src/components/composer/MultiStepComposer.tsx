@@ -51,6 +51,13 @@ export interface MultiStepComposerProps<S> {
   /** Caller passes the last-completed-step index + 1 if a draft exists; the
    *  composer mounts on that step with prior fields populated. */
   resumeFromStep?: number
+  /** Accessible name for the dialog. Defaults to a stable generic label so
+   *  the dialog's accessible name doesn't collide with the *current step's*
+   *  input label. Consumers should pass the composer's purpose ("Set up
+   *  your shop", "Host a gathering", etc.). T073b fix-forward: without
+   *  this, getByLabel matches both the dialog and any input whose label
+   *  happens to match the step title — strict-mode violation. */
+  dialogLabel?: string
 }
 
 /**
@@ -63,6 +70,7 @@ export function MultiStepComposer<S>({
   onComplete,
   onAbandon,
   resumeFromStep = 0,
+  dialogLabel = 'Multi-step composer',
 }: MultiStepComposerProps<S>) {
   const [state, setState] = useState<S>(initialState)
   const [stepIdx, setStepIdx] = useState<number>(
@@ -167,7 +175,7 @@ export function MultiStepComposer<S>({
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="multistep-composer-step-title"
+      aria-label={dialogLabel}
     >
       <div
         ref={dialogRef}
@@ -243,8 +251,14 @@ export function MultiStepComposer<S>({
           </div>
           <div className="min-w-[6rem] text-center">
             {step.isOptional && (
+              // T073b: per DLS § Multi-step composer the Skip affordance is
+              // a "text link" — semantically role=link, mechanically a button
+              // that fires onClick without navigation. role="link" lets
+              // getByRole('link', { name: /Skip this step/i }) resolve while
+              // the focusable <button> element keeps keyboard semantics.
               <button
                 type="button"
+                role="link"
                 onClick={handleSkip}
                 disabled={submitting}
                 className="text-sm text-[--color-fg-muted] hover:underline disabled:opacity-50"
