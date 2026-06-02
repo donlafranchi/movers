@@ -8,6 +8,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
+import { AddProductButton } from '@/components/sell/AddProductButton'
 
 export default async function SellIndexPage() {
   const supabase = await createClient()
@@ -19,7 +20,9 @@ export default async function SellIndexPage() {
 
   const { data: memberships } = await supabase
     .from('group_memberships')
-    .select('group_id, groups!inner(id, slug, name, kind, lifecycle_state)')
+    .select(
+      'group_id, groups!inner(id, slug, name, kind, lifecycle_state, anchor_location_id)',
+    )
     .eq('member_id', memberId)
     .is('left_at', null)
     .eq('groups.kind', 'business')
@@ -27,9 +30,31 @@ export default async function SellIndexPage() {
 
   type Row = {
     group_id: string
-    groups: { id: string; slug: string; name: string; kind: string; lifecycle_state: string }
+    groups: {
+      id: string
+      slug: string
+      name: string
+      kind: string
+      lifecycle_state: string
+      anchor_location_id: string | null
+    }
   }
   const shops = (memberships ?? []) as unknown as Row[]
+
+  // Resolve anchor-Location labels for the pickup-point pre-select.
+  const anchorIds = shops
+    .map((r) => r.groups.anchor_location_id)
+    .filter((id): id is string => Boolean(id))
+  const anchorLabels = new Map<string, string>()
+  if (anchorIds.length > 0) {
+    const { data: locs } = await supabase
+      .from('locations')
+      .select('id, label')
+      .in('id', anchorIds)
+    for (const l of (locs ?? []) as { id: string; label: string }[]) {
+      anchorLabels.set(l.id, l.label)
+    }
+  }
 
   // No active Shops AND we got here? Send the user back to /you to pick up
   // the walkthrough — the CTA logic shouldn't have routed them here.
@@ -61,20 +86,18 @@ export default async function SellIndexPage() {
               <p className="text-xs text-neutral-500">Active shop</p>
             </div>
             <div className="flex items-center gap-2">
-              {/* T073b: must be role=button (not link) — eval expects
-                  `getByRole('button', { name: /Add a product|Add an item/i })`.
-                  The product composer (F038) lands the real surface; until
-                  then this button is intentionally inert (disabled). */}
-              <button
-                type="button"
-                disabled
-                data-testid={`you-sell-add-product-${row.group_id}`}
-                className="btn-secondary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label={`Add a product to ${row.groups.name}`}
-                title="Product composer ships with F038"
-              >
-                Add a product
-              </button>
+              {/* T078 (F038): the real product composer. Keeps role=button +
+                  /Add a product/i accessible name the eval relies on. */}
+              <AddProductButton
+                groupId={row.group_id}
+                groupName={row.groups.name}
+                anchorLocationId={row.groups.anchor_location_id}
+                anchorLocationLabel={
+                  row.groups.anchor_location_id
+                    ? anchorLabels.get(row.groups.anchor_location_id) ?? null
+                    : null
+                }
+              />
             </div>
           </li>
         ))}
