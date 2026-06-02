@@ -88,11 +88,11 @@ describe('T077 — itemCreate input validation', () => {
     expect(parsed.success).toBe(true)
   })
 
-  it('rejects a non-product kind at b1', () => {
+  it('rejects a kind outside the multi-kind enum (T080 widened to product/service/gathering)', () => {
     const parsed = itemCreateInput.safeParse({
       memberId: MEMBER,
-      kind: 'service',
-      title: 'Plumbing',
+      kind: 'wonder',
+      title: 'Idle thought',
     })
     expect(parsed.success).toBe(false)
   })
