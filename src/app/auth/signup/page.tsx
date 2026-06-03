@@ -9,6 +9,9 @@ export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next')
+  // F030: new signups land in onboarding (profile · locality · interests) by
+  // default; an explicit next (e.g. /register-vendor) overrides.
+  const effectiveNext = next ?? '/onboarding'
   const loginHref = next ? `/auth/login?next=${encodeURIComponent(next)}` : '/auth/login'
 
   const [magicLinkEmail, setMagicLinkEmail] = useState<string | null>(null)
@@ -50,8 +53,8 @@ export default function SignUpPage() {
 
         <AuthMethods
           mode="signup"
-          next={next}
-          onPasswordSuccess={() => router.push(next && next.startsWith('/') ? next : '/')}
+          next={effectiveNext}
+          onPasswordSuccess={() => router.push(effectiveNext.startsWith('/') ? effectiveNext : '/onboarding')}
           onMagicLinkSent={(email) => setMagicLinkEmail(email)}
         />
 
