@@ -12,6 +12,8 @@ import {
   memberPlaceInterestAdd,
   memberPlaceInterestRemove,
   memberInterestsAdd,
+  memberFollow,
+  memberUnfollow,
 } from './member'
 import { groupCreate, groupUpdateDraft, groupActivate } from './group'
 import { itemCreate, itemPublish, itemAttachLocation } from './item'
@@ -30,6 +32,8 @@ const REGISTRY: Record<string, NamedActionHandler<unknown, unknown>> = {
   'member.place_interest.add': memberPlaceInterestAdd as unknown as NamedActionHandler<unknown, unknown>,
   'member.place_interest.remove': memberPlaceInterestRemove as unknown as NamedActionHandler<unknown, unknown>,
   'member.interests.add': memberInterestsAdd as unknown as NamedActionHandler<unknown, unknown>,
+  'member.follow': memberFollow as unknown as NamedActionHandler<unknown, unknown>,
+  'member.unfollow': memberUnfollow as unknown as NamedActionHandler<unknown, unknown>,
 }
 
 export function getHandler(name: string): NamedActionHandler<unknown, unknown> | null {
@@ -41,7 +45,7 @@ export function listHandlers(): string[] {
 }
 
 // Re-exports for convenience.
-export { memberCreate, memberPlaceInterestAdd, memberInterestsAdd } from './member'
+export { memberCreate, memberPlaceInterestAdd, memberInterestsAdd, memberFollow, memberUnfollow } from './member'
 export { groupCreate, groupUpdateDraft, groupActivate } from './group'
 export { itemCreate, itemPublish, itemAttachLocation } from './item'
 export {
