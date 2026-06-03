@@ -24,6 +24,15 @@ export {
   type MemberInterestsAddResult,
 } from './interests-add'
 
+// T091 — Follow / unfollow handlers (F032)
+export {
+  memberFollow,
+  memberUnfollow,
+  memberFollowInput,
+  type MemberFollowInput,
+  type MemberFollowResult,
+} from './follow'
+
 // T063 — Saved-search handlers
 export {
   memberSavedSearchCreate,
