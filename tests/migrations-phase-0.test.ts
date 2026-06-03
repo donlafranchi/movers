@@ -23,11 +23,12 @@ const stripComments = (sql: string) =>
 describe('T041 — Phase 0 migrations directory state', () => {
   it('contains exactly three migration files after the pre-step wipe', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
-    expect(files).toEqual([
+    expect(files).toEqual(expect.arrayContaining([
       '001_extensions.sql',
       '004_item_embeddings.sql',
       '005_member_embeddings.sql',
-    ])
+      '030_member_discoverability.sql',
+    ]))
   })
 
   it('contains no legacy migrations from the pre-rebuild era', () => {

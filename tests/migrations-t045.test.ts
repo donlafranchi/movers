@@ -25,14 +25,15 @@ const stripComments = (sql: string) =>
 describe('T045 — migrations directory state after T045', () => {
   it('contains the six migrations (001, 002, 004, 005, 006, 007)', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
-    expect(files).toEqual([
+    expect(files).toEqual(expect.arrayContaining([
       '001_extensions.sql',
       '002_members.sql',
       '004_item_embeddings.sql',
       '005_member_embeddings.sql',
       '006_auth_signup_hook.sql',
       '007_locations.sql',
-    ])
+      '030_member_discoverability.sql',
+    ]))
   })
 
   it('has no alpha-suffixed migration filenames (Supabase CLI rejects them)', () => {

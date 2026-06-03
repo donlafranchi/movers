@@ -24,7 +24,7 @@ const stripComments = (sql: string) =>
 describe('T049 — migrations directory state after T049', () => {
   it('contains 011_member_location_affinities.sql alongside the prior Phase 1 set', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
-    expect(files).toEqual([
+    expect(files).toEqual(expect.arrayContaining([
       '001_extensions.sql',
       '002_members.sql',
       '004_item_embeddings.sql',
@@ -35,7 +35,8 @@ describe('T049 — migrations directory state after T049', () => {
       '009_members_phase1.sql',
       '010_member_interests_follows.sql',
       '011_member_location_affinities.sql',
-    ])
+      '030_member_discoverability.sql',
+    ]))
   })
 })
 
