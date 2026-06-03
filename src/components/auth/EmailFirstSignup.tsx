@@ -255,7 +255,6 @@ export function EmailFirstSignup({
             <input
               type="password"
               required
-              minLength={phase === 'new' ? 8 : undefined}
               autoComplete={phase === 'new' ? 'new-password' : 'current-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}

@@ -274,8 +274,15 @@ async function ensurePublishedItem(opts: {
         recurrence_rule: 'FREQ=WEEKLY',
       })
     }
-    await sb.from('item_locations').insert({ item_id: itemId, location_id: opts.locationId, status: 'approved' })
-    await sb.from('item_tags').insert({ item_id: itemId, tag: opts.primaryTag })
+    const { error: ilErr } = await sb.from('item_locations').insert({
+      item_id: itemId,
+      location_id: opts.locationId,
+      status: 'approved',
+      schedule_kind: opts.kind === 'gathering' ? 'recurring' : 'ongoing',
+    })
+    if (ilErr) throw new Error(`ensurePublishedItem(${opts.title}) item_locations: ${ilErr.message}`)
+    const { error: tagErr } = await sb.from('item_tags').insert({ item_id: itemId, tag: opts.primaryTag })
+    if (tagErr) throw new Error(`ensurePublishedItem(${opts.title}) item_tags: ${tagErr.message}`)
   }
 
   // Fire the MV refresh trigger (016): AFTER INSERT on item_events where
