@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { signIn } from '../helpers/auth'
+import { signUpWithPassword, signInViaEmailFirst } from '../helpers/auth'
 import {
   seedF030Fixture,
   NADIA,
@@ -15,13 +15,15 @@ import {
 //
 // One test per acceptance criterion:
 //   1. Anonymous visitor sees a locality-defaulted feed + "Make this yours" CTA.
-//   2. Signup → profile → locality → interests onboarding (each step writes).
+//   2. Signup (email/password, new user) → profile → locality → interests.
 //   3. Feed re-renders against the chosen scope.
 //   4. Empty-state widen-locality when no Items match.
 //
-// Auth-method note (b1 ratified): magic-link is the primary method; the eval
-// signs in with the password path (helpers/auth.ts) for determinism — a magic
-// link can't be clicked headless. The post-auth onboarding flow is identical.
+// Auth-method note (b1): email/password is the primary method via the
+// email-first signup page (/auth/signup) — a single email step that detects
+// new vs returning users. Local dev auto-confirms (config.toml
+// enable_confirmations=false) so signUp yields a live session. Magic-link is a
+// secondary option (not exercised headless — a link can't be clicked).
 
 let SEEDED: SeededF030Fixture
 test.beforeAll(async () => {
@@ -61,18 +63,20 @@ test.describe('F030 — A newcomer signs up and lands in the feed', () => {
     })
   })
 
-  test.describe('AC2 + AC3 — Signup → onboarding → feed re-renders against the chosen scope', () => {
-    test('Given a newcomer completes auth | When they finish the three-step onboarding | Then each step writes and they land on a feed scoped to their chosen locality', async ({
+  test.describe('AC2 + AC3 — Email/password signup → onboarding → feed re-renders against the chosen scope', () => {
+    test('Given a new visitor signs up with email + password | When they finish the three-step onboarding | Then each step writes and they land on a feed scoped to their chosen locality', async ({
       page,
     }) => {
-      // Sign in as the seeded newcomer (no primary_home yet → routes to onboarding).
-      await signIn(page, NADIA.email, NADIA.password)
-      await page.goto('/onboarding')
+      // A genuinely new email → the signup page routes to "set a password",
+      // creates the account, and (local auto-confirm) lands us on /onboarding.
+      const email = `newcomer+${Date.now()}@example.test`
+      await signUpWithPassword(page, email, 'F030-newcomer-pass')
+      await page.waitForURL((url) => url.pathname === '/onboarding')
 
       // Step 1 — Profile. Name + handle required.
       await expect(page.getByText('Tell us who you are')).toBeVisible()
-      await page.getByTestId('onboarding-name').fill(NADIA.displayName)
-      await page.getByTestId('onboarding-handle').fill(NADIA.handle)
+      await page.getByTestId('onboarding-name').fill('New Comer')
+      await page.getByTestId('onboarding-handle').fill(`newcomer-${Date.now().toString().slice(-6)}`)
       await page.getByRole('button', { name: /Continue/i }).click()
 
       // Step 2 — Home locality (required). Pick the seeded Oak Park place.
@@ -96,16 +100,21 @@ test.describe('F030 — A newcomer signs up and lands in the feed', () => {
       // The Items near their chosen locality are present.
       await expect(page.getByText(PRODUCT.title)).toBeVisible()
       await expect(page.getByText(GATHERING.title)).toBeVisible()
-    })
 
-    test('Given the newcomer already onboarded | When they revisit /onboarding | Then they are redirected to the feed (idempotent re-entry)', async ({
-      page,
-    }) => {
-      await signIn(page, NADIA.email, NADIA.password)
+      // Idempotent re-entry: now onboarded, revisiting /onboarding → /.
       await page.goto('/onboarding')
-      // Nadia now has a primary_home from the prior test → redirect to /.
       await page.waitForURL((url) => url.pathname === '/')
       await expect(page.getByTestId('locality-feed')).toBeVisible()
+    })
+
+    test('Given a returning member enters their email | When the page detects the account | Then it shows "enter password" and signs them in', async ({
+      page,
+    }) => {
+      // NADIA is seeded (a registered auth user) → the email-first page must
+      // detect her and show the enter-password (returning) phase, then log in.
+      await signInViaEmailFirst(page, NADIA.email, NADIA.password)
+      // Signed in. NADIA has no primary_home → routed to onboarding (next=/onboarding).
+      await expect(page).toHaveURL(/\/onboarding|\/$/)
     })
   })
 })
