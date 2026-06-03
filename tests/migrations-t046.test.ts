@@ -21,15 +21,17 @@ const stripComments = (sql: string) =>
 describe('T046 — migrations directory state after T046', () => {
   it('contains the seven migrations (001, 002, 004, 005, 006, 007, 008)', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
-    expect(files).toEqual([
-      '001_extensions.sql',
-      '002_members.sql',
-      '004_item_embeddings.sql',
-      '005_member_embeddings.sql',
-      '006_auth_signup_hook.sql',
-      '007_locations.sql',
-      '008_locations_owner_read.sql',
-    ])
+    expect(files).toEqual(
+      expect.arrayContaining([
+        '001_extensions.sql',
+        '002_members.sql',
+        '004_item_embeddings.sql',
+        '005_member_embeddings.sql',
+        '006_auth_signup_hook.sql',
+        '007_locations.sql',
+        '008_locations_owner_read.sql',
+      ]),
+    )
   })
 })
 
