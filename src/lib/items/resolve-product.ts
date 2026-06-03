@@ -20,6 +20,16 @@ export interface ResolvedProductPickup {
   label: string
 }
 
+/**
+ * T095 — Item attribution model. Items filed under a Group attribute to the Group
+ * (always public); items sold as an individual attribute to the Member with a
+ * conditional link gated by is_discoverable. Selling something publicly does not
+ * require the seller's personal profile to be searchable.
+ */
+export type ItemAttribution =
+  | { kind: 'group'; name: string }
+  | { kind: 'member'; handle: string; displayName: string; isDiscoverable: boolean }
+
 export interface ResolvedProduct {
   itemId: string
   title: string
@@ -27,9 +37,10 @@ export interface ResolvedProduct {
   priceCents: number | null
   priceUnit: string | null
   photoUrls: string[]
-  /** Group display_name (denormalized onto items.brand_label); null when sold as individual. */
+  /** Group display_name (denormalized onto items.brand_label); null when sold as individual.
+   *  Kept for generateMetadata page-title fallback; attribution drives all surfaces. */
   brandLabel: string | null
-  owner: { handle: string; displayName: string }
+  attribution: ItemAttribution
   pickup: ResolvedProductPickup | null
   /** F039 — null until a Locally Made claim lands; gates the badge. */
   madeAtPlaceId: string | null
@@ -69,10 +80,12 @@ interface ProductRow {
   description: string
   brand_label: string | null
   made_at_place_id: string | null
+  member_id: string
   item_products:
     | { price_cents: number | null; price_unit: string | null; photo_urls: string[] }[]
     | { price_cents: number | null; price_unit: string | null; photo_urls: string[] }
     | null
+  // owner embed is only present on the individual-sale path; null otherwise (selected away).
   owner:
     | { handle: string; display_name: string }[]
     | { handle: string; display_name: string }
@@ -119,14 +132,22 @@ export async function resolveProduct(
   }
   if (!scope) return null
 
+  // T095 — Attribution model. Group-filed items attribute to the Group (always
+  // public); the members embed is dropped on that path so item pages no longer
+  // require a base-table read of members. Individual items still embed the
+  // author's member row for the attribution name + handle, plus a separate read
+  // of member_public_discoverability for the conditional link.
+  const baseSelect =
+    'id, title, description, brand_label, made_at_place_id, member_id, ' +
+    'item_products(price_cents, price_unit, photo_urls), ' +
+    'item_locations(removed_at, locations(label))'
+  const select = scope.individual
+    ? baseSelect + ', owner:members!member_id(handle, display_name)'
+    : baseSelect
+
   let query = supabase
     .from('items')
-    .select(
-      'id, title, description, brand_label, made_at_place_id, ' +
-        'item_products(price_cents, price_unit, photo_urls), ' +
-        'owner:members!member_id(handle, display_name), ' +
-        'item_locations(removed_at, locations(label))',
-    )
+    .select(select)
     .eq(scope.column, scope.value)
     .eq('kind', 'product')
     .eq('state', 'published')
@@ -141,12 +162,32 @@ export async function resolveProduct(
   if (!row) return null
 
   const prod = firstEmbed(row.item_products)
-  const owner = firstEmbed(row.owner)
-  if (!owner) return null
 
   // First active (non-removed) pickup Location.
   const activeLoc = (row.item_locations ?? []).find((il) => il.removed_at === null)
   const locEmbed = activeLoc ? firstEmbed(activeLoc.locations) : null
+
+  // Build attribution by scope.
+  let attribution: ItemAttribution
+  if (scope.individual) {
+    const owner = firstEmbed(row.owner)
+    if (!owner) return null
+    const { data: disc } = await supabase
+      .from('member_public_discoverability')
+      .select('is_discoverable')
+      .eq('member_id', row.member_id)
+      .maybeSingle()
+    attribution = {
+      kind: 'member',
+      handle: owner.handle,
+      displayName: owner.display_name,
+      isDiscoverable: (disc as { is_discoverable: boolean } | null)?.is_discoverable ?? false,
+    }
+  } else {
+    // Group-filed: brand_label is the denormalized Group display_name.
+    if (!row.brand_label) return null
+    attribution = { kind: 'group', name: row.brand_label }
+  }
 
   return {
     itemId: row.id,
@@ -156,7 +197,7 @@ export async function resolveProduct(
     priceUnit: prod?.price_unit ?? null,
     photoUrls: prod?.photo_urls ?? [],
     brandLabel: row.brand_label,
-    owner: { handle: owner.handle, displayName: owner.display_name },
+    attribution,
     pickup: locEmbed ? { label: locEmbed.label } : null,
     madeAtPlaceId: row.made_at_place_id,
   }

@@ -26,8 +26,8 @@ test.beforeAll(async () => {
 });
 
 test.describe("F038 — A producer lists a product", () => {
-  test.describe("Beat 1 — Item page under a Group: brand resolve-up + owner + pickup + skip-provenance", () => {
-    test("Given a published product filed under a business Group at its place-scoped URL | When any viewer loads it | Then title, price, brand link, owner link, and pickup render — and NO Locally Made badge (skip-provenance)", async ({
+  test.describe("Beat 1 — Item page under a Group: Group attribution + pickup + skip-provenance (T095)", () => {
+    test("Given a published product filed under a business Group at its place-scoped URL | When any viewer loads it | Then title, price, Group attribution link, and pickup render — and NO Locally Made badge (skip-provenance) and NO separate /m/<handle> link (T095 — Member-behind-Group is separately gated)", async ({
       page,
     }) => {
       const product = SEEDED.paidGroup;
@@ -44,38 +44,25 @@ test.describe("F038 — A producer lists a product", () => {
       await expect(page.getByTestId("product-title")).toHaveText(product.title);
 
       // Then — price formatted from item_products (priced product → "$8.00 / loaf")
-      // Why: AC "Item page shows brand resolve-up + owner" — price is part of the
-      // Item-page contract; the "/ unit" suffix proves price_unit round-trips.
       await expect(page.getByTestId("product-price")).toHaveText("$8.00 / loaf");
 
-      // Then — brand resolve-up: the Group's display_name links to the Group page
-      // Why: AC "Item page shows brand resolve-up + owner" — items.brand_label is
-      // derived from group_businesses.display_name and must link back to the Shop.
-      const brand = page.getByTestId("product-brand-link");
-      await expect(brand).toHaveText(SHOP.brandName);
-      await expect(brand).toHaveAttribute(
+      // Then — Group attribution: "Sold by <Group name>" links to the Group page.
+      // T095: business-Group items attribute to the Group (always public-by-default),
+      // not the personal Member behind the Group. The Group is findable; the
+      // founder's personal profile is a separate, default-private setting.
+      const attribution = page.getByTestId("product-attribution-link");
+      await expect(attribution).toHaveText(SHOP.brandName);
+      await expect(attribution).toHaveAttribute(
         "href",
         new RegExp(`/g/${SHOP.slug}$`),
       );
 
-      // Then — owner Member name links to /m/<handle>
-      // Why: AC — the owning human stays visible (person-anchoring); the link
-      // target must resolve to the founder's Member page.
-      const owner = page.getByTestId("product-owner-link");
-      await expect(owner).toHaveText(MAYA.displayName);
-      await expect(owner).toHaveAttribute("href", `/m/${MAYA.handle}`);
-
       // Then — pickup point (item_locations → locations.label) renders
-      // Why: AC — pickup point with a map pin. The read join surfaces the
-      // attached Location's label; its presence proves item_locations resolved.
       await expect(page.getByTestId("product-pickup")).toContainText(
         "Maya's Oak Park Kitchen",
       );
 
       // Then — NO Locally Made badge (the F038 skip-provenance path)
-      // Why: AC "Skip-provenance path" — made_at_place_id is NULL, so the badge
-      // slot renders nothing. A badge here would mean the gate fires on a false
-      // positive (mirror F035 beat 2's negative-branch assertion).
       await expect(page.getByTestId("product-made-badge")).toHaveCount(0);
       await expect(page.getByText(/locally made/i)).toHaveCount(0);
     });
@@ -107,14 +94,14 @@ test.describe("F038 — A producer lists a product", () => {
       expect(product.url).toMatch(new RegExp(`^/m/${MAYA.handle}/p/`));
 
       await expect(page.getByTestId("product-title")).toHaveText(product.title);
-      await expect(page.getByTestId("product-owner-link")).toHaveAttribute(
+      // T095 — Attribution to the Member: linked if the seller has opted into
+      // discoverability, plain text otherwise. The eval fixture must set
+      // is_discoverable=true on MAYA for the link assertion to hold (the
+      // post-T095 default is false). Plain-text fallback is covered by unit tests.
+      await expect(page.getByTestId("product-attribution-link")).toHaveAttribute(
         "href",
         `/m/${MAYA.handle}`,
       );
-
-      // Then — no brand resolve-up for an individually-sold Item
-      await expect(page.getByTestId("product-brand-link")).toHaveCount(0);
-      await expect(page.getByTestId("product-brand")).toHaveCount(0);
     });
   });
 

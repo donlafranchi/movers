@@ -1,19 +1,22 @@
 // T092 — Public Member page resolver (F032 read surface).
+// T095 — Discoverability gate: private-by-default; render / tombstone / 404.
 // Spec:   planning/now/scenario-F032-viewer-finds-member-page-and-follows.md
+//         product/systems/member.md § Privacy controls (Ratified 2026-06-03)
 //
-// Resolves the Member at /m/[handle] plus everything the page renders:
-// authored published Items, listed Group memberships, standing-presence, and
-// (for an auth'd viewer) the follow state. Supabase-client-shaped so it runs
-// from a server component with the session-bound client — same convention as
-// resolve-shop.ts.
-//
-// Visibility is enforced by RLS + the public projection views (migration 029):
-//   - members_public_read filters soft-deleted + the system Member → a
-//     deleted/nonexistent handle yields null → 404.
-//   - items_select_published gates Items (we also filter state='published').
-//   - member_public_group_memberships only exposes active explicit memberships
-//     in non-dissolved, LISTED Groups — unlisted/private never surface, and
-//     place-interests are never queried.
+// The visibility decision is made FIRST, by the SECURITY DEFINER RPC
+// resolve_member_page_visibility (migration 030) — the single source of truth
+// over member_privacy (which is owner-only under RLS, so the resolver cannot
+// read it directly). The RPC collapses (handle, viewer, profile_visibility,
+// is_discoverable, via-direct-link) into one verdict:
+//   - notfound  → the page 404s. anon never learns a non-public Member exists;
+//                 a search/directory origin (viaDirectLink=false) folds a
+//                 non-discoverable Member into notfound too.
+//   - tombstone → a signed-in, non-self viewer hit a 'private' Member's URL.
+//   - render    → proceed to read the page data. The remaining reads still rely
+//                 on RLS + the 029 projections (members_public_read,
+//                 items_select_published, member_public_group_memberships).
+// `indexable` (render only) drives the page's robots meta: index iff the Member
+// is discoverable AND public; everything else is noindex.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { itemHref } from '@/lib/feed/item-url'
@@ -46,6 +49,13 @@ export interface ResolvedMemberPage {
   isFollowing: boolean
 }
 
+// Discriminated result. `null` is no longer used — every outcome is explicit so
+// the page can distinguish 404 (notfound) from a private-member tombstone.
+export type MemberPageView =
+  | { kind: 'render'; page: ResolvedMemberPage; indexable: boolean }
+  | { kind: 'tombstone'; handle: string }
+  | { kind: 'notfound' }
+
 interface MemberRow {
   id: string
   handle: string
@@ -68,21 +78,46 @@ interface GroupRow {
   kind: string
 }
 
+interface VisibilityRow {
+  member_id: string | null
+  verdict: 'render' | 'tombstone' | 'notfound'
+  is_discoverable: boolean | null
+  profile_visibility: string | null
+}
+
 export async function resolveMemberPage(
   supabase: SupabaseClient,
-  args: { handle: string; viewerId?: string | null },
-): Promise<ResolvedMemberPage | null> {
+  args: { handle: string; viewerId?: string | null; viaDirectLink?: boolean },
+): Promise<MemberPageView> {
+  const viewerId = args.viewerId ?? null
+  const viaDirectLink = args.viaDirectLink ?? true
+
+  // Gate first — one SECURITY DEFINER round-trip decides render/tombstone/404.
+  const { data: visData, error: visErr } = await supabase.rpc('resolve_member_page_visibility', {
+    p_handle: args.handle,
+    p_via_direct_link: viaDirectLink,
+  })
+  if (visErr) return { kind: 'notfound' }
+
+  // Set-returning function → PostgREST returns an array of rows.
+  const vis = (Array.isArray(visData) ? visData[0] : visData) as VisibilityRow | undefined
+  if (!vis || vis.verdict === 'notfound' || !vis.member_id) return { kind: 'notfound' }
+  if (vis.verdict === 'tombstone') return { kind: 'tombstone', handle: args.handle }
+
+  // render — index iff discoverable AND public (unlisted is link-only, never indexed).
+  const indexable = vis.is_discoverable === true && vis.profile_visibility === 'public'
+
   const { data: memberData, error: memberErr } = await supabase
     .from('members')
     .select('id, handle, display_name, bio, pronouns, avatar_url')
-    .eq('handle', args.handle)
+    .eq('id', vis.member_id)
     .limit(1)
     .maybeSingle()
 
-  if (memberErr || !memberData) return null
+  // RLS could still withhold the row (defense in depth); treat as 404.
+  if (memberErr || !memberData) return { kind: 'notfound' }
   const member = memberData as unknown as MemberRow
 
-  const viewerId = args.viewerId ?? null
   const isSelf = viewerId !== null && viewerId === member.id
 
   // Authored, published, non-deleted Items (newest first).
@@ -144,16 +179,20 @@ export async function resolveMemberPage(
   }
 
   return {
-    memberId: member.id,
-    handle: member.handle,
-    displayName: member.display_name,
-    bio: member.bio,
-    pronouns: member.pronouns,
-    avatarUrl: member.avatar_url,
-    hasStandingPresence,
-    items,
-    groups,
-    isSelf,
-    isFollowing,
+    kind: 'render',
+    indexable,
+    page: {
+      memberId: member.id,
+      handle: member.handle,
+      displayName: member.display_name,
+      bio: member.bio,
+      pronouns: member.pronouns,
+      avatarUrl: member.avatar_url,
+      hasStandingPresence,
+      items,
+      groups,
+      isSelf,
+      isFollowing,
+    },
   }
 }

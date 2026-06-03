@@ -18,6 +18,7 @@
 // the Location resolve lookup-or-create by founder + brand / label.
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { markMemberDiscoverable } from './_member-privacy'
 import { randomUUID } from 'node:crypto'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -259,6 +260,9 @@ async function ensureBusinessGroup(opts: {
 export async function seedF035Fixture(): Promise<SeededF035Fixture> {
   const mayaId = await ensureIdentity(MAYA)
   const rosaId = await ensureIdentity(ROSA)
+  // T095 — opt Maya into discoverability so the "Founded by Maya" line renders
+  // a link to /m/<handle> instead of plain text (post-T095 default is false).
+  await markMemberDiscoverable(adminClient(), mayaId)
 
   const anchorId = await ensureLocation({
     label: "Maya's Oak Park Kitchen",

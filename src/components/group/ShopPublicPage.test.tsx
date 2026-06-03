@@ -17,7 +17,12 @@ const SHOP: ResolvedShop = {
   publicDescription: 'Real bread, baked local.',
   lifecycleState: 'active',
   anchorLocationId: 'loc-1',
-  founder: { handle: 'maya', displayName: 'Maya Rivera', avatarUrl: 'https://x/a.png' },
+  founder: {
+    handle: 'maya',
+    displayName: 'Maya Rivera',
+    avatarUrl: 'https://x/a.png',
+    isDiscoverable: true,
+  },
 }
 
 function renderShop(overrides: Partial<Parameters<typeof ShopPublicPage>[0]> = {}) {
@@ -40,13 +45,28 @@ describe('ShopPublicPage — Beat 1 (header)', () => {
     expect(h1).toHaveTextContent('Oak Park Sourdough')
   })
 
-  it('links the founder to their Member page; name labels the link, avatar is decorative', () => {
+  it('links the founder to their Member page when isDiscoverable=true; avatar is decorative', () => {
     renderShop()
     const founder = screen.getByTestId('shop-founder')
-    const link = founder.querySelector('a')
+    const link = screen.getByTestId('shop-founder-link')
     expect(link).toHaveAttribute('href', '/m/maya')
     expect(founder).toHaveTextContent('Maya Rivera')
     // a11y: avatar is decorative (alt="") so the link name isn't duplicated.
+    expect(founder.querySelector('img')).toHaveAttribute('alt', '')
+  })
+
+  it('T095 — renders the founder as plain text (no link) when isDiscoverable=false', () => {
+    renderShop({
+      shop: {
+        ...SHOP,
+        founder: { ...SHOP.founder!, isDiscoverable: false },
+      },
+    })
+    const founder = screen.getByTestId('shop-founder')
+    expect(founder).toHaveTextContent('Maya Rivera')
+    expect(screen.queryByTestId('shop-founder-link')).not.toBeInTheDocument()
+    expect(screen.getByTestId('shop-founder-text')).toBeInTheDocument()
+    // Avatar still renders; just not inside a link.
     expect(founder.querySelector('img')).toHaveAttribute('alt', '')
   })
 

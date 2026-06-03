@@ -50,21 +50,35 @@ export function GatheringPublicPage({
           {gathering.title}
         </h1>
 
-        {/* Brand resolve-up — links to the Group page when filed. */}
-        {gathering.brandLabel ? (
-          groupHref ? (
+        {/* T095 — attribution (see ProductPublicPage for the model). */}
+        {gathering.attribution.kind === 'group' && groupHref ? (
+          <p className="mt-2 text-sm font-medium" data-testid="gathering-attribution">
+            Hosted by{' '}
             <Link
               href={groupHref}
-              data-testid="gathering-brand-link"
-              className="mt-2 inline-block text-sm font-medium text-[--color-accent] hover:underline"
+              data-testid="gathering-attribution-link"
+              className="text-[--color-accent] hover:underline"
             >
-              {gathering.brandLabel}
+              {gathering.attribution.name}
             </Link>
-          ) : (
-            <p data-testid="gathering-brand" className="mt-2 text-sm font-medium">
-              {gathering.brandLabel}
-            </p>
-          )
+          </p>
+        ) : gathering.attribution.kind === 'member' ? (
+          <p className="mt-2 text-sm font-medium" data-testid="gathering-attribution">
+            Hosted by{' '}
+            {gathering.attribution.isDiscoverable ? (
+              <Link
+                href={`/m/${gathering.attribution.handle}`}
+                data-testid="gathering-attribution-link"
+                className="text-[--color-accent] hover:underline"
+              >
+                {gathering.attribution.displayName}
+              </Link>
+            ) : (
+              <span data-testid="gathering-attribution-text">
+                {gathering.attribution.displayName}
+              </span>
+            )}
+          </p>
         ) : null}
 
         <section className="mt-4 space-y-1.5 text-sm">
@@ -144,16 +158,8 @@ export function GatheringPublicPage({
           {isOwner ? <QrCardButton itemId={gathering.itemId} /> : null}
         </div>
 
-        <p className="mt-6 text-sm text-[--color-fg-muted]">
-          Hosted by{' '}
-          <Link
-            href={`/m/${gathering.owner.handle}`}
-            data-testid="gathering-owner-link"
-            className="font-medium text-[--color-accent] hover:underline"
-          >
-            {gathering.owner.displayName}
-          </Link>
-        </p>
+        {/* T095 — the standalone "Hosted by [Member]" line is folded into the
+            attribution block above. */}
       </article>
     </main>
   )

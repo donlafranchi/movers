@@ -30,6 +30,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { markMemberDiscoverable } from './_member-privacy'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -339,6 +340,9 @@ async function ensureGathering(opts: {
  *  Call from `test.beforeAll`. Idempotent across reruns. */
 export async function seedF034Fixture(): Promise<SeededF034Fixture> {
   const jordanId = await ensureIdentity(JORDAN)
+  // T095 — opt Jordan into discoverability so the "Hosted by Jordan" line on
+  // the Member-hosted gathering page renders a link (post-T095 default is false).
+  await markMemberDiscoverable(adminClient(), jordanId)
   const venueId = await ensureLocation({
     label: VENUE_LABEL,
     founderMemberId: jordanId,

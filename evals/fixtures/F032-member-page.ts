@@ -43,6 +43,23 @@ export const GHOST = {
   displayName: 'Ghost Member',
 } as const
 
+// T095 gating members. CONSUMER keeps the new b1 default (members_only,
+// is_discoverable=false): anon → 404, a signed-in viewer with the URL → renders.
+// VAULT is fully private: a signed-in non-self viewer → tombstone, anon → 404.
+export const CONSUMER = {
+  email: 'cory-f032@example.test',
+  password: 'F032-test-password',
+  handle: 'cory-f032-test',
+  displayName: 'Cory Consumer',
+} as const
+
+export const VAULT = {
+  email: 'vera-f032@example.test',
+  password: 'F032-test-password',
+  handle: 'vera-f032-test',
+  displayName: 'Vera Vault',
+} as const
+
 export const LISTED_GROUP = {
   name: 'Oak Park Bakers',
   slug: 'oak-park-bakers-f032',
@@ -60,6 +77,8 @@ export const ITEM = {
 export interface SeededF032Fixture {
   nadiaId: string
   theoId: string
+  consumerId: string
+  vaultId: string
 }
 
 let admin: SupabaseClient | null = null
@@ -198,13 +217,27 @@ async function ensurePublishedItem(opts: {
   title: string
 }): Promise<string> {
   const sb = adminClient()
-  const { data: existing } = await sb
+  // Converge to exactly ONE active item. (Prior fixture used .maybeSingle() for
+  // the lookup, which *errors* on >1 match rather than returning a row — so it
+  // re-inserted on every run once a duplicate existed, accumulating dupes that
+  // broke the strict-mode `member-item` assertion. Soft-delete surplus rows
+  // instead of hard-deleting — the resolver already filters `deleted_at`, and
+  // soft-delete avoids item_locations / item_events FK cascades.)
+  const { data: rows } = await sb
     .from('items')
     .select('id')
     .eq('member_id', opts.memberId)
     .eq('title', opts.title)
-    .maybeSingle()
-  if (existing) return existing.id as string
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+  const existing = (rows ?? []) as { id: string }[]
+  if (existing.length > 0) {
+    const surplus = existing.slice(1).map((r) => r.id)
+    if (surplus.length > 0) {
+      await sb.from('items').update({ deleted_at: new Date().toISOString() }).in('id', surplus)
+    }
+    return existing[0].id
+  }
   const { data, error } = await sb
     .from('items')
     .insert({
@@ -220,19 +253,42 @@ async function ensurePublishedItem(opts: {
   return data.id as string
 }
 
-/** Seed Nadia + Theo + Ghost, Nadia's listed/unlisted Groups + Item, and clear
- *  any prior Theo→Nadia follow so the toggle starts from "not following". */
+/** Set a Member's T095 privacy gate directly (service-role bypasses the
+ *  action-layer-only write convention — acceptable for eval seeds). */
+async function setPrivacy(
+  memberId: string,
+  opts: { isDiscoverable: boolean; profileVisibility: 'public' | 'unlisted' | 'members_only' | 'private' },
+): Promise<void> {
+  const { error } = await adminClient()
+    .from('member_privacy')
+    .update({ is_discoverable: opts.isDiscoverable, profile_visibility: opts.profileVisibility })
+    .eq('member_id', memberId)
+  if (error) throw new Error(`setPrivacy(${memberId}): ${error.message}`)
+}
+
+/** Seed Nadia + Theo + Ghost (+ T095 gating members), Nadia's listed/unlisted
+ *  Groups + Item, and clear any prior Theo→Nadia follow so the toggle starts
+ *  from "not following". */
 export async function seedF032Fixture(): Promise<SeededF032Fixture> {
   const sb = adminClient()
   const nadiaId = await ensureIdentity(NADIA)
   const theoId = await ensureIdentity(THEO)
   const ghostId = await ensureIdentity(GHOST)
+  const consumerId = await ensureIdentity(CONSUMER)
+  const vaultId = await ensureIdentity(VAULT)
 
   // Nadia's profile fields (ensureIdentity only sets handle + display_name).
   await sb
     .from('members')
     .update({ bio: NADIA.bio, pronouns: NADIA.pronouns, avatar_url: NADIA.avatarUrl })
     .eq('id', nadiaId)
+
+  // T095 privacy gates. Nadia is the F032 "findable producer" — she opted into
+  // discoverability (a public, indexable profile), so the find+follow beats hold.
+  // CONSUMER keeps the new private-by-default (members_only); VAULT is private.
+  await setPrivacy(nadiaId, { isDiscoverable: true, profileVisibility: 'public' })
+  await setPrivacy(consumerId, { isDiscoverable: false, profileVisibility: 'members_only' })
+  await setPrivacy(vaultId, { isDiscoverable: false, profileVisibility: 'private' })
 
   // Ghost is soft-deleted → her page must 404.
   await sb.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', ghostId)
@@ -259,7 +315,7 @@ export async function seedF032Fixture(): Promise<SeededF032Fixture> {
     .eq('follower_member_id', theoId)
     .eq('followed_member_id', nadiaId)
 
-  return { nadiaId, theoId }
+  return { nadiaId, theoId, consumerId, vaultId }
 }
 
 /** True iff Theo currently has an ACTIVE follow on Nadia (admin read). */

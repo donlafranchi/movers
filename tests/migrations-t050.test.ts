@@ -24,21 +24,20 @@ const stripComments = (sql: string) =>
 describe('T050 — migrations directory state after T050', () => {
   it('contains 012_member_agent_assistance.sql alongside the prior Phase 1 set', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
-    expect(files).toEqual(
-      expect.arrayContaining([
-        '001_extensions.sql',
-        '002_members.sql',
-        '004_item_embeddings.sql',
-        '005_member_embeddings.sql',
-        '006_auth_signup_hook.sql',
-        '007_locations.sql',
-        '008_locations_owner_read.sql',
-        '009_members_phase1.sql',
-        '010_member_interests_follows.sql',
-        '011_member_location_affinities.sql',
-        '012_member_agent_assistance.sql',
-      ]),
-    )
+    expect(files).toEqual(expect.arrayContaining([
+      '001_extensions.sql',
+      '002_members.sql',
+      '004_item_embeddings.sql',
+      '005_member_embeddings.sql',
+      '006_auth_signup_hook.sql',
+      '007_locations.sql',
+      '008_locations_owner_read.sql',
+      '009_members_phase1.sql',
+      '010_member_interests_follows.sql',
+      '011_member_location_affinities.sql',
+      '012_member_agent_assistance.sql',
+      '030_member_discoverability.sql',
+    ]))
   })
 })
 

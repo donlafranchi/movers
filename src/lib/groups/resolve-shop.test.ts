@@ -35,18 +35,32 @@ describe('splitGroupSlug', () => {
   })
 })
 
-// Supabase client stub: a chainable builder whose terminal .maybeSingle()
-// resolves the canned row. Mirrors the pattern in getDraftGroup.test.ts /
-// SellCta.test.tsx — RLS is exercised by the Playwright eval, not here.
-function makeSupabaseStub(row: unknown, error: unknown = null) {
-  const chain: Record<string, unknown> = {}
-  const passthrough = () => chain
-  chain.select = passthrough
-  chain.eq = passthrough
-  chain.is = passthrough
-  chain.limit = passthrough
-  chain.maybeSingle = () => Promise.resolve({ data: row, error })
-  return { from: () => chain } as unknown as Parameters<typeof resolveShop>[0]
+// Supabase client stub: switches the chainable builder by table name so we can
+// stub two queries (groups + member_public_discoverability) in one test.
+// T095 — added discoverability route.
+function makeSupabaseStub(routes: {
+  group?: unknown
+  groupError?: unknown
+  discoverability?: unknown
+}) {
+  return {
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {}
+      const passthrough = () => chain
+      chain.select = passthrough
+      chain.eq = passthrough
+      chain.is = passthrough
+      chain.limit = passthrough
+      if (table === 'member_public_discoverability') {
+        chain.maybeSingle = () =>
+          Promise.resolve({ data: routes.discoverability ?? null, error: null })
+      } else {
+        chain.maybeSingle = () =>
+          Promise.resolve({ data: routes.group ?? null, error: routes.groupError ?? null })
+      }
+      return chain
+    },
+  } as unknown as Parameters<typeof resolveShop>[0]
 }
 
 const ACTIVE_ROW = {
@@ -58,22 +72,28 @@ const ACTIVE_ROW = {
   group_businesses: [
     { display_name: 'Oak Park Sourdough', public_description: 'Real bread, baked local.' },
   ],
-  founder: [{ handle: 'maya', display_name: 'Maya Rivera', avatar_url: 'https://x/a.png' }],
+  founder: [{ id: 'mem-maya', handle: 'maya', display_name: 'Maya Rivera', avatar_url: 'https://x/a.png' }],
 }
 
 describe('resolveShop', () => {
   it('returns null when RLS yields no row (draft-to-non-owner, dissolved, nonexistent)', async () => {
-    const shop = await resolveShop(makeSupabaseStub(null), 'whatever')
+    const shop = await resolveShop(makeSupabaseStub({ group: null }), 'whatever')
     expect(shop).toBeNull()
   })
 
   it('returns null on a query error rather than throwing', async () => {
-    const shop = await resolveShop(makeSupabaseStub(null, { message: 'boom' }), 'x')
+    const shop = await resolveShop(
+      makeSupabaseStub({ group: null, groupError: { message: 'boom' } }),
+      'x',
+    )
     expect(shop).toBeNull()
   })
 
-  it('maps an active business Group with its brand label + founder', async () => {
-    const shop = await resolveShop(makeSupabaseStub(ACTIVE_ROW), 'oak-park-sourdough')
+  it('maps an active business Group with founder, defaulting isDiscoverable=false when no privacy row', async () => {
+    const shop = await resolveShop(
+      makeSupabaseStub({ group: ACTIVE_ROW, discoverability: null }),
+      'oak-park-sourdough',
+    )
     expect(shop).toEqual({
       groupId: 'grp-1',
       slug: 'oak-park-sourdough',
@@ -81,13 +101,29 @@ describe('resolveShop', () => {
       publicDescription: 'Real bread, baked local.',
       lifecycleState: 'active',
       anchorLocationId: 'loc-1',
-      founder: { handle: 'maya', displayName: 'Maya Rivera', avatarUrl: 'https://x/a.png' },
+      founder: {
+        handle: 'maya',
+        displayName: 'Maya Rivera',
+        avatarUrl: 'https://x/a.png',
+        isDiscoverable: false,
+      },
     })
+  })
+
+  it('surfaces founder isDiscoverable=true when the projection view returns it', async () => {
+    const shop = await resolveShop(
+      makeSupabaseStub({ group: ACTIVE_ROW, discoverability: { is_discoverable: true } }),
+      'oak-park-sourdough',
+    )
+    expect(shop?.founder?.isDiscoverable).toBe(true)
   })
 
   it('flags a draft row so the page can render the owner preview', async () => {
     const shop = await resolveShop(
-      makeSupabaseStub({ ...ACTIVE_ROW, lifecycle_state: 'draft' }),
+      makeSupabaseStub({
+        group: { ...ACTIVE_ROW, lifecycle_state: 'draft' },
+        discoverability: null,
+      }),
       'oak-park-sourdough',
     )
     expect(shop?.lifecycleState).toBe('draft')
@@ -96,19 +132,23 @@ describe('resolveShop', () => {
   it('tolerates PostgREST returning the embeds as single objects', async () => {
     const shop = await resolveShop(
       makeSupabaseStub({
-        ...ACTIVE_ROW,
-        group_businesses: { display_name: 'Solo Object Shop', public_description: '' },
-        founder: { handle: 'maya', display_name: 'Maya Rivera', avatar_url: null },
+        group: {
+          ...ACTIVE_ROW,
+          group_businesses: { display_name: 'Solo Object Shop', public_description: '' },
+          founder: { id: 'mem-maya', handle: 'maya', display_name: 'Maya Rivera', avatar_url: null },
+        },
+        discoverability: { is_discoverable: false },
       }),
       'oak-park-sourdough',
     )
     expect(shop?.displayName).toBe('Solo Object Shop')
     expect(shop?.founder?.avatarUrl).toBeNull()
+    expect(shop?.founder?.isDiscoverable).toBe(false)
   })
 
   it('returns a null founder gracefully when the embed is absent', async () => {
     const shop = await resolveShop(
-      makeSupabaseStub({ ...ACTIVE_ROW, founder: null }),
+      makeSupabaseStub({ group: { ...ACTIVE_ROW, founder: null }, discoverability: null }),
       'oak-park-sourdough',
     )
     expect(shop?.founder).toBeNull()
@@ -117,7 +157,7 @@ describe('resolveShop', () => {
 
 describe('resolveLocalOwnerBadge', () => {
   it('returns null until the S-jurisdictions substrate ships (F037 forward-dep)', async () => {
-    const badge = await resolveLocalOwnerBadge(makeSupabaseStub(null), {
+    const badge = await resolveLocalOwnerBadge(makeSupabaseStub({ group: null }), {
       groupId: 'grp-1',
       anchorLocationId: 'loc-1',
     })

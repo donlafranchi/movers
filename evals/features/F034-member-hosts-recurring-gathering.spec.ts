@@ -64,16 +64,15 @@ test.describe("F034 — A member hosts a recurring gathering", () => {
       // Captured — "Cost … null = free".
       await expect(page.getByTestId("gathering-cost")).toHaveText("Free");
 
-      // Then — brand resolve-up: the Group display_name links to the Group page.
-      const brand = page.getByTestId("gathering-brand-link");
-      await expect(brand).toHaveText(CREW.brandName);
-      await expect(brand).toHaveAttribute("href", new RegExp(`/g/${CREW.slug}$`));
-
-      // Then — owner (host) Member name links to /m/<handle>. Why: AC — the
-      // hosting human stays visible (person-anchoring).
-      const owner = page.getByTestId("gathering-owner-link");
-      await expect(owner).toHaveText(JORDAN.displayName);
-      await expect(owner).toHaveAttribute("href", `/m/${JORDAN.handle}`);
+      // Then — Group attribution: "Hosted by <Group name>" links to the Group page.
+      // T095: Group-filed items attribute to the Group; the personal Member
+      // behind the Group is separately gated.
+      const attribution = page.getByTestId("gathering-attribution-link");
+      await expect(attribution).toHaveText(CREW.brandName);
+      await expect(attribution).toHaveAttribute(
+        "href",
+        new RegExp(`/g/${CREW.slug}$`),
+      );
 
       // Then — the Share-link affordance is present. Why: AC — "a 'Share link'
       // affordance that copies the canonical URL".
@@ -95,17 +94,16 @@ test.describe("F034 — A member hosts a recurring gathering", () => {
       expect(gathering.url).toMatch(new RegExp(`^/m/${JORDAN.handle}/e/`));
 
       await expect(page.getByTestId("gathering-title")).toHaveText(gathering.title);
-      await expect(page.getByTestId("gathering-owner-link")).toHaveAttribute(
+      // T095 — Attribution to the host Member: linked when discoverable, plain
+      // text otherwise. Eval fixture must set is_discoverable=true on JORDAN for
+      // the link assertion to hold; plain-text path is covered by unit tests.
+      await expect(page.getByTestId("gathering-attribution-link")).toHaveAttribute(
         "href",
         `/m/${JORDAN.handle}`,
       );
       await expect(page.getByTestId("gathering-recurrence")).toHaveText(
         "Every Thursday",
       );
-
-      // Then — no brand resolve-up for a Member-hosted gathering.
-      await expect(page.getByTestId("gathering-brand-link")).toHaveCount(0);
-      await expect(page.getByTestId("gathering-brand")).toHaveCount(0);
     });
   });
 

@@ -51,21 +51,35 @@ export function ServicePublicPage({ service, groupHref, isOwner = false }: Servi
           {formatRate(service.rateModel, service.rateCents)}
         </p>
 
-        {/* Brand resolve-up — links to the Group page when filed. */}
-        {service.brandLabel ? (
-          groupHref ? (
+        {/* T095 — attribution (see ProductPublicPage for the model). */}
+        {service.attribution.kind === 'group' && groupHref ? (
+          <p className="mt-3 text-sm font-medium" data-testid="service-attribution">
+            Offered by{' '}
             <Link
               href={groupHref}
-              data-testid="service-brand-link"
-              className="mt-3 inline-block text-sm font-medium text-[--color-accent] hover:underline"
+              data-testid="service-attribution-link"
+              className="text-[--color-accent] hover:underline"
             >
-              {service.brandLabel}
+              {service.attribution.name}
             </Link>
-          ) : (
-            <p data-testid="service-brand" className="mt-3 text-sm font-medium">
-              {service.brandLabel}
-            </p>
-          )
+          </p>
+        ) : service.attribution.kind === 'member' ? (
+          <p className="mt-3 text-sm font-medium" data-testid="service-attribution">
+            Offered by{' '}
+            {service.attribution.isDiscoverable ? (
+              <Link
+                href={`/m/${service.attribution.handle}`}
+                data-testid="service-attribution-link"
+                className="text-[--color-accent] hover:underline"
+              >
+                {service.attribution.displayName}
+              </Link>
+            ) : (
+              <span data-testid="service-attribution-text">
+                {service.attribution.displayName}
+              </span>
+            )}
+          </p>
         ) : null}
 
         {service.description ? (
@@ -92,16 +106,8 @@ export function ServicePublicPage({ service, groupHref, isOwner = false }: Servi
           </section>
         ) : null}
 
-        <p className="mt-6 text-sm text-[--color-fg-muted]">
-          Offered by{' '}
-          <Link
-            href={`/m/${service.owner.handle}`}
-            data-testid="service-owner-link"
-            className="font-medium text-[--color-accent] hover:underline"
-          >
-            {service.owner.displayName}
-          </Link>
-        </p>
+        {/* T095 — the standalone "Offered by [Member]" line is folded into the
+            attribution block above. */}
 
         {isOwner ? (
           <div className="mt-6">

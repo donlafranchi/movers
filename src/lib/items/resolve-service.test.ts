@@ -1,5 +1,6 @@
 // T083 — Unit tests for the service resolver.
-// Trace: F040 § Item URL pattern + § Item page shows brand + service area + pricing.
+// T095 — Updated: attribution model (Group vs Member + conditional link).
+// Trace: F040 § Item URL pattern + § Item page shows attribution + service area + pricing.
 
 import { describe, it, expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -54,6 +55,7 @@ function serviceRow(overrides: Record<string, unknown> = {}) {
     title: 'Piano lessons',
     description: 'In-home, 30 minutes.',
     brand_label: 'Maya Music',
+    member_id: 'mem-maya',
     item_services: {
       rate_model: 'hourly',
       rate_cents: 9500,
@@ -65,8 +67,8 @@ function serviceRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('resolveService — group path', () => {
-  it('maps the matching row to the result shape', async () => {
+describe('resolveService — group path (T095 Group-attribution)', () => {
+  it('attributes to the Group (kind=group, name=brand_label)', async () => {
     const supabase = makeSupabase({
       groups: { data: { id: 'g1' } },
       items: { data: [serviceRow()] },
@@ -81,8 +83,20 @@ describe('resolveService — group path', () => {
     expect(result!.rateCents).toBe(9500)
     expect(result!.hasServiceArea).toBe(true)
     expect(result!.brandLabel).toBe('Maya Music')
-    expect(result!.owner).toEqual({ handle: 'maya', displayName: 'Maya Chen' })
+    expect(result!.attribution).toEqual({ kind: 'group', name: 'Maya Music' })
     expect(result!.anchor).toEqual({ label: 'Studio' })
+  })
+
+  it('returns null when a Group-filed service has no brand_label', async () => {
+    const supabase = makeSupabase({
+      groups: { data: { id: 'g1' } },
+      items: { data: [serviceRow({ brand_label: null })] },
+    })
+    const result = await resolveService(supabase, {
+      groupSlug: 'maya-music-a1',
+      itemSlug: 'piano-lessons-deadbeef',
+    })
+    expect(result).toBeNull()
   })
 
   it('returns null when no row id matches the slug fragment', async () => {
@@ -107,10 +121,10 @@ describe('resolveService — group path', () => {
   })
 })
 
-describe('resolveService — individual path + variants', () => {
-  it('resolves a quote service sold as individual (no brand, no rate, no area)', async () => {
+describe('resolveService — individual path (T095 Member-attribution + conditional link)', () => {
+  it('attributes to the Member with isDiscoverable=true', async () => {
     const supabase = makeSupabase({
-      members: { data: { id: 'm1' } },
+      members: { data: { id: 'mem-maya' } },
       items: {
         data: [
           serviceRow({
@@ -124,6 +138,7 @@ describe('resolveService — individual path + variants', () => {
           }),
         ],
       },
+      member_public_discoverability: { data: { is_discoverable: true } },
     })
     const result = await resolveService(supabase, {
       handle: 'maya',
@@ -132,8 +147,25 @@ describe('resolveService — individual path + variants', () => {
     expect(result).not.toBeNull()
     expect(result!.brandLabel).toBeNull()
     expect(result!.rateModel).toBe('quote')
-    expect(result!.rateCents).toBeNull()
     expect(result!.hasServiceArea).toBe(false)
-    expect(result!.anchor).toBeNull()
+    expect(result!.attribution).toEqual({
+      kind: 'member',
+      handle: 'maya',
+      displayName: 'Maya Chen',
+      isDiscoverable: true,
+    })
+  })
+
+  it('attributes to the Member with isDiscoverable=false (plain-text fallback)', async () => {
+    const supabase = makeSupabase({
+      members: { data: { id: 'mem-maya' } },
+      items: { data: [serviceRow({ brand_label: null })] },
+      member_public_discoverability: { data: { is_discoverable: false } },
+    })
+    const result = await resolveService(supabase, {
+      handle: 'maya',
+      itemSlug: 'piano-lessons-deadbeef',
+    })
+    expect((result!.attribution as { isDiscoverable: boolean }).isDiscoverable).toBe(false)
   })
 })

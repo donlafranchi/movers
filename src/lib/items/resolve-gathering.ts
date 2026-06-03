@@ -11,6 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseIdFragment } from './resolve-product'
+import type { ItemAttribution } from './resolve-product'
 
 export interface ResolvedGatheringLocation {
   label: string
@@ -26,9 +27,10 @@ export interface ResolvedGathering {
   capacity: number | null
   costCents: number | null
   whatToBring: string | null
-  /** Group display_name (items.brand_label); null when hosted as a Member. */
+  /** Group display_name (items.brand_label); null when hosted as a Member.
+   *  Kept for generateMetadata page-title fallback; attribution drives all surfaces. */
   brandLabel: string | null
-  owner: { handle: string; displayName: string }
+  attribution: ItemAttribution
   location: ResolvedGatheringLocation | null
 }
 
@@ -103,7 +105,9 @@ interface GatheringRow {
   title: string
   description: string
   brand_label: string | null
+  member_id: string
   item_gatherings: GatheringChild[] | GatheringChild | null
+  // owner embed only present on the individual-host path.
   owner:
     | { handle: string; display_name: string }[]
     | { handle: string; display_name: string }
@@ -148,14 +152,19 @@ export async function resolveGathering(
   }
   if (!scope) return null
 
+  // T095 — Group-filed gatherings attribute to the Group; individual gatherings
+  // (Member-hosted, no Group) embed the host + read discoverability separately.
+  const baseSelect =
+    'id, title, description, brand_label, member_id, ' +
+    'item_gatherings(starts_at, ends_at, recurrence_rule, capacity, cost_cents, what_to_bring), ' +
+    'item_locations(removed_at, locations(label))'
+  const select = scope.individual
+    ? baseSelect + ', owner:members!member_id(handle, display_name)'
+    : baseSelect
+
   let query = supabase
     .from('items')
-    .select(
-      'id, title, description, brand_label, ' +
-        'item_gatherings(starts_at, ends_at, recurrence_rule, capacity, cost_cents, what_to_bring), ' +
-        'owner:members!member_id(handle, display_name), ' +
-        'item_locations(removed_at, locations(label))',
-    )
+    .select(select)
     .eq(scope.column, scope.value)
     .eq('kind', 'gathering')
     .eq('state', 'published')
@@ -169,11 +178,29 @@ export async function resolveGathering(
   if (!row) return null
 
   const child = firstEmbed(row.item_gatherings)
-  const owner = firstEmbed(row.owner)
-  if (!owner) return null
 
   const activeLoc = (row.item_locations ?? []).find((il) => il.removed_at === null)
   const locEmbed = activeLoc ? firstEmbed(activeLoc.locations) : null
+
+  let attribution: ItemAttribution
+  if (scope.individual) {
+    const owner = firstEmbed(row.owner)
+    if (!owner) return null
+    const { data: disc } = await supabase
+      .from('member_public_discoverability')
+      .select('is_discoverable')
+      .eq('member_id', row.member_id)
+      .maybeSingle()
+    attribution = {
+      kind: 'member',
+      handle: owner.handle,
+      displayName: owner.display_name,
+      isDiscoverable: (disc as { is_discoverable: boolean } | null)?.is_discoverable ?? false,
+    }
+  } else {
+    if (!row.brand_label) return null
+    attribution = { kind: 'group', name: row.brand_label }
+  }
 
   return {
     itemId: row.id,
@@ -186,7 +213,7 @@ export async function resolveGathering(
     costCents: child?.cost_cents ?? null,
     whatToBring: child?.what_to_bring ?? null,
     brandLabel: row.brand_label,
-    owner: { handle: owner.handle, displayName: owner.display_name },
+    attribution,
     location: locEmbed ? { label: locEmbed.label } : null,
   }
 }

@@ -1,5 +1,6 @@
 // T079 — Unit tests for the product resolver.
-// Trace: F038 § Item URL pattern + § Item page shows brand + owner + skip-path.
+// T095 — Updated: attribution model (Group vs Member + conditional link).
+// Trace: F038 § Item URL pattern + § Item page shows attribution + skip-path.
 
 import { describe, it, expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -71,6 +72,7 @@ function productRow(overrides: Record<string, unknown> = {}) {
     description: 'Naturally leavened.',
     brand_label: 'Oak Park Sourdough',
     made_at_place_id: null,
+    member_id: 'mem-maya',
     item_products: { price_cents: 900, price_unit: 'loaf', photo_urls: [] },
     owner: { handle: 'maya', display_name: 'Maya Chen' },
     item_locations: [{ removed_at: null, locations: { label: "Maya's Kitchen" } }],
@@ -78,8 +80,8 @@ function productRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('resolveProduct — group path', () => {
-  it('maps the matching row to the result shape', async () => {
+describe('resolveProduct — group path (T095 Group-attribution)', () => {
+  it('attributes to the Group (kind=group, name=brand_label); members embed is not consulted', async () => {
     const supabase = makeSupabase({
       groups: { data: { id: 'g1' } },
       items: { data: [productRow()] },
@@ -93,9 +95,21 @@ describe('resolveProduct — group path', () => {
     expect(result!.priceCents).toBe(900)
     expect(result!.priceUnit).toBe('loaf')
     expect(result!.brandLabel).toBe('Oak Park Sourdough')
-    expect(result!.owner).toEqual({ handle: 'maya', displayName: 'Maya Chen' })
+    expect(result!.attribution).toEqual({ kind: 'group', name: 'Oak Park Sourdough' })
     expect(result!.pickup).toEqual({ label: "Maya's Kitchen" })
     expect(result!.madeAtPlaceId).toBeNull()
+  })
+
+  it('returns null when a Group-filed item has no brand_label (Group attribution requires it)', async () => {
+    const supabase = makeSupabase({
+      groups: { data: { id: 'g1' } },
+      items: { data: [productRow({ brand_label: null })] },
+    })
+    const result = await resolveProduct(supabase, {
+      groupSlug: 'oak-park-sourdough-a1',
+      itemSlug: 'country-sourdough-loaf-deadbeef',
+    })
+    expect(result).toBeNull()
   })
 
   it('returns null when no row id matches the slug fragment', async () => {
@@ -120,10 +134,10 @@ describe('resolveProduct — group path', () => {
   })
 })
 
-describe('resolveProduct — individual path', () => {
-  it('resolves a free product sold as individual (no brand)', async () => {
+describe('resolveProduct — individual path (T095 Member-attribution + conditional link)', () => {
+  it('attributes to the Member with isDiscoverable=true when the discoverability row says so', async () => {
     const supabase = makeSupabase({
-      members: { data: { id: 'm1' } },
+      members: { data: { id: 'mem-maya' } },
       items: {
         data: [
           productRow({
@@ -132,6 +146,7 @@ describe('resolveProduct — individual path', () => {
           }),
         ],
       },
+      member_public_discoverability: { data: { is_discoverable: true } },
     })
     const result = await resolveProduct(supabase, {
       handle: 'maya',
@@ -140,5 +155,42 @@ describe('resolveProduct — individual path', () => {
     expect(result).not.toBeNull()
     expect(result!.brandLabel).toBeNull()
     expect(result!.priceCents).toBeNull()
+    expect(result!.attribution).toEqual({
+      kind: 'member',
+      handle: 'maya',
+      displayName: 'Maya Chen',
+      isDiscoverable: true,
+    })
+  })
+
+  it('attributes to the Member with isDiscoverable=false (plain-text fallback)', async () => {
+    const supabase = makeSupabase({
+      members: { data: { id: 'mem-maya' } },
+      items: { data: [productRow({ brand_label: null })] },
+      member_public_discoverability: { data: { is_discoverable: false } },
+    })
+    const result = await resolveProduct(supabase, {
+      handle: 'maya',
+      itemSlug: 'country-sourdough-loaf-deadbeef',
+    })
+    expect(result!.attribution).toEqual({
+      kind: 'member',
+      handle: 'maya',
+      displayName: 'Maya Chen',
+      isDiscoverable: false,
+    })
+  })
+
+  it('falls back to isDiscoverable=false when the discoverability row is missing', async () => {
+    const supabase = makeSupabase({
+      members: { data: { id: 'mem-maya' } },
+      items: { data: [productRow({ brand_label: null })] },
+      member_public_discoverability: { data: null },
+    })
+    const result = await resolveProduct(supabase, {
+      handle: 'maya',
+      itemSlug: 'country-sourdough-loaf-deadbeef',
+    })
+    expect((result!.attribution as { isDiscoverable: boolean }).isDiscoverable).toBe(false)
   })
 })

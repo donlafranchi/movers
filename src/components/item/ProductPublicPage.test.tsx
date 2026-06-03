@@ -1,5 +1,6 @@
 // T079 — Unit tests for <ProductPublicPage>.
-// Trace: F038 § Item page shows brand resolve-up + owner; § Skip-provenance path.
+// T095 — Updated: attribution model (Group vs Member + conditional link).
+// Trace: F038 § Item page shows attribution; § Skip-provenance path.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
@@ -18,15 +19,15 @@ function product(overrides: Partial<ResolvedProduct> = {}): ResolvedProduct {
     priceUnit: 'loaf',
     photoUrls: [],
     brandLabel: 'Oak Park Sourdough',
-    owner: { handle: 'maya', displayName: 'Maya Chen' },
+    attribution: { kind: 'group', name: 'Oak Park Sourdough' },
     pickup: { label: "Maya's Kitchen" },
     madeAtPlaceId: null,
     ...overrides,
   }
 }
 
-describe('T079 — ProductPublicPage', () => {
-  it('renders title, price, pickup, brand link, and owner link', () => {
+describe('T079/T095 — ProductPublicPage', () => {
+  it('Group-attributed: "Sold by [Group]" links to the Shop page', () => {
     render(
       <ProductPublicPage
         product={product()}
@@ -37,13 +38,52 @@ describe('T079 — ProductPublicPage', () => {
     expect(screen.getByTestId('product-price')).toHaveTextContent('$9.00 / loaf')
     expect(screen.getByTestId('product-pickup')).toHaveTextContent("Maya's Kitchen")
 
-    const brand = screen.getByTestId('product-brand-link')
-    expect(brand).toHaveTextContent('Oak Park Sourdough')
-    expect(brand).toHaveAttribute('href', '/p/ca/sacramento/oak-park/g/oak-park-sourdough-a1')
+    const attribution = screen.getByTestId('product-attribution')
+    expect(attribution).toHaveTextContent('Sold by Oak Park Sourdough')
+    const link = screen.getByTestId('product-attribution-link')
+    expect(link).toHaveAttribute('href', '/p/ca/sacramento/oak-park/g/oak-park-sourdough-a1')
+  })
 
-    const owner = screen.getByTestId('product-owner-link')
-    expect(owner).toHaveTextContent('Maya Chen')
-    expect(owner).toHaveAttribute('href', '/m/maya')
+  it('Member-attributed, discoverable: "Sold by [Member]" links to /m/<handle>', () => {
+    render(
+      <ProductPublicPage
+        product={product({
+          brandLabel: null,
+          attribution: {
+            kind: 'member',
+            handle: 'maya',
+            displayName: 'Maya Chen',
+            isDiscoverable: true,
+          },
+        })}
+        groupHref={null}
+      />,
+    )
+    const attribution = screen.getByTestId('product-attribution')
+    expect(attribution).toHaveTextContent('Sold by Maya Chen')
+    const link = screen.getByTestId('product-attribution-link')
+    expect(link).toHaveAttribute('href', '/m/maya')
+  })
+
+  it('Member-attributed, non-discoverable: "Sold by [Member]" renders as plain text (no link)', () => {
+    render(
+      <ProductPublicPage
+        product={product({
+          brandLabel: null,
+          attribution: {
+            kind: 'member',
+            handle: 'maya',
+            displayName: 'Maya Chen',
+            isDiscoverable: false,
+          },
+        })}
+        groupHref={null}
+      />,
+    )
+    const attribution = screen.getByTestId('product-attribution')
+    expect(attribution).toHaveTextContent('Sold by Maya Chen')
+    expect(screen.queryByTestId('product-attribution-link')).not.toBeInTheDocument()
+    expect(screen.getByTestId('product-attribution-text')).toHaveTextContent('Maya Chen')
   })
 
   it('renders "Free" when priceCents is null', () => {
@@ -64,11 +104,5 @@ describe('T079 — ProductPublicPage', () => {
       />,
     )
     expect(screen.getByTestId('product-made-badge')).toBeInTheDocument()
-  })
-
-  it('renders the brand as plain text (no link) when no groupHref', () => {
-    render(<ProductPublicPage product={product()} groupHref={null} />)
-    expect(screen.queryByTestId('product-brand-link')).not.toBeInTheDocument()
-    expect(screen.getByTestId('product-brand')).toHaveTextContent('Oak Park Sourdough')
   })
 })
