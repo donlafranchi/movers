@@ -19,6 +19,7 @@ import { defineHandler } from '../_lib/handler'
 import { withTransaction } from '../_lib/db'
 import { appendEvent } from '../_lib/event-log'
 import { toSlug } from '../../lib/slugify'
+import { maybeEnqueueDiscoverabilityPrompt } from '../../lib/member/acquisition-prompt'
 import type { ActionContext } from '../_lib/context'
 import { GROUP_KINDS, DRAFT_NAME_PLACEHOLDER } from './constants'
 
@@ -153,6 +154,13 @@ export const groupCreate = defineHandler(
           source: 'explicit',
         },
       })
+
+      // T095 — prompt-on-acquisition. Founding a kind='business' Group is the
+      // Member's first business-Group membership; enqueue the one-time
+      // discoverability offer (no-op for community kinds, where the founder is
+      // owner — not steward — so the helper's qualifying probe declines). Same
+      // transaction so the offer can never be lost between membership + prompt.
+      await maybeEnqueueDiscoverabilityPrompt(client, input.founderMemberId)
 
       return { groupId, slug: insertedSlug, lifecycleState: 'draft' }
     })

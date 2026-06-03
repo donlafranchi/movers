@@ -29,6 +29,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { markMemberDiscoverable } from './_member-privacy'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -358,6 +359,10 @@ export async function seedF036Fixture(): Promise<SeededF036Fixture> {
     handle: BAKER_RUTH.handle,
     displayName: BAKER_RUTH.displayName,
   })
+  // T095 — opt Ruth (the established Seller — Maya is the fresh Seller whose
+  // walkthrough hasn't created a Group yet) into discoverability so the F036
+  // Shop "Founded by Ruth" link assertion holds (post-T095 default is false).
+  await markMemberDiscoverable(adminClient(), ruthId)
   const ruthLocId = await ensureLocation({
     label: BAKER_RUTH.existingLocationName,
     founderMemberId: ruthId,

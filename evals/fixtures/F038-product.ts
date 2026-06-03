@@ -26,6 +26,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { markMemberDiscoverable } from './_member-privacy'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -349,6 +350,10 @@ async function lookupPlaceId(slug: string): Promise<string | null> {
  *  Call from `test.beforeAll`. Idempotent across reruns. */
 export async function seedF038Fixture(): Promise<SeededF038Fixture> {
   const mayaId = await ensureIdentity(MAYA)
+  // T095 — opt Maya into discoverability so the Member-attribution-link beat
+  // (Sell-as-individual) renders the link rather than plain text. The default
+  // is false; we explicitly opt in for the eval.
+  await markMemberDiscoverable(adminClient(), mayaId)
   const anchorId = await ensureLocation({
     label: PICKUP_LABEL,
     founderMemberId: mayaId,

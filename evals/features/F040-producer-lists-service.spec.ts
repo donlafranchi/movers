@@ -48,23 +48,15 @@ test.describe("F040 — A producer lists a service", () => {
       // part of the Item-page contract; the flat model formats as a bare amount.
       await expect(page.getByTestId("service-rate")).toHaveText("$50.00");
 
-      // Then — brand resolve-up: the Group's display_name links to the Group page
-      // Why: AC "Item page shows … brand resolve-up (if filed under Group)" —
-      // items.brand_label derives from group_businesses.display_name and links
-      // back to the Studio.
-      const brand = page.getByTestId("service-brand-link");
-      await expect(brand).toHaveText(STUDIO.brandName);
-      await expect(brand).toHaveAttribute(
+      // Then — Group attribution: "Offered by <Group name>" links to the Group page.
+      // T095: business-Group items attribute to the Group; the personal Member
+      // behind the Group is separately gated (default-private).
+      const attribution = page.getByTestId("service-attribution-link");
+      await expect(attribution).toHaveText(STUDIO.brandName);
+      await expect(attribution).toHaveAttribute(
         "href",
         new RegExp(`/g/${STUDIO.slug}$`),
       );
-
-      // Then — owner Member name links to /m/<handle>
-      // Why: AC — "owner Member link"; the owning human stays visible
-      // (person-anchoring); the link target must resolve to the founder's page.
-      const owner = page.getByTestId("service-owner-link");
-      await expect(owner).toHaveText(TOMAS.displayName);
-      await expect(owner).toHaveAttribute("href", `/m/${TOMAS.handle}`);
 
       // Then — the service-area section renders (driven by a non-null
       // item_services.service_area_geography Polygon)
@@ -123,17 +115,16 @@ test.describe("F040 — A producer lists a service", () => {
       expect(service.url).toMatch(new RegExp(`^/m/${TOMAS.handle}/s/`));
 
       await expect(page.getByTestId("service-title")).toHaveText(service.title);
-      await expect(page.getByTestId("service-owner-link")).toHaveAttribute(
+      // T095 — Attribution to the Member: linked when discoverable, plain text
+      // otherwise. Eval fixture must set is_discoverable=true on TOMAS for the
+      // link assertion to hold; plain-text path is covered by unit tests.
+      await expect(page.getByTestId("service-attribution-link")).toHaveAttribute(
         "href",
         `/m/${TOMAS.handle}`,
       );
 
       // Then — hourly rate formats with the "/ hr" suffix
       await expect(page.getByTestId("service-rate")).toHaveText("$40.00 / hr");
-
-      // Then — no brand resolve-up for an individually-sold Item
-      await expect(page.getByTestId("service-brand-link")).toHaveCount(0);
-      await expect(page.getByTestId("service-brand")).toHaveCount(0);
     });
   });
 

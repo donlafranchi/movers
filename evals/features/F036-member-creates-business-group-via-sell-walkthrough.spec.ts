@@ -202,18 +202,20 @@ test.describe("F036 — Maya creates a business Group through the Sell walkthrou
       // brand-name collisions across cities. Strict regex enforces the ADR pattern.
       await expect(page).toHaveURL(/\/p\/.+\/g\/oak-park-sourdough(-[a-z0-9]+)?$/);
 
-      // Then — page renders Maya as founder (byline links to her Member page)
+      // Then — page renders Maya as founder (byline shows her, no /m link yet)
       // Why: scenario Then-clause "page renders her as founder + owner". The merged
       // F035 Shop page (ShopPublicPage, data-testid="shop-founder") renders the
-      // founder as a byline that links to /m/[handle]. The handle is the durable
-      // identity carried in the URL; the visible label is the display name. Assert
-      // the link target (handle) + the founder byline container — this keeps the
-      // trace to the accountable human without coupling to display-name copy or to
-      // a literal "founder"/"owner" word the public page deliberately omits.
+      // founder byline. Per T095 the link to /m/[handle] is gated on the founder's
+      // discoverability: a Member created through this walkthrough is private-by-
+      // default (is_discoverable=false), so her byline renders as plain text
+      // (shop-founder-text) with NO /m link — existence surfaces, the personal
+      // profile link only appears once she opts in. Assert the founder container +
+      // the text byline, and that no /m/[handle] link is present.
+      await expect(page.getByTestId("shop-founder")).toBeVisible();
+      await expect(page.getByTestId("shop-founder-text")).toBeVisible();
       await expect(
         page.locator(`a[href="/m/${MAYA.handle}"]`)
-      ).toBeVisible();
-      await expect(page.getByTestId("shop-founder")).toBeVisible();
+      ).toHaveCount(0);
 
       // Then — empty Items section on the freshly-created Shop
       // Why: scenario Then-clause "empty Items section". The merged F035 page

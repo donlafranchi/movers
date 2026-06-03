@@ -55,21 +55,39 @@ export function ProductPublicPage({ product, groupHref, isOwner = false }: Produ
           {formatPrice(product.priceCents, product.priceUnit)}
         </p>
 
-        {/* Brand resolve-up — links to the Group page when filed. */}
-        {product.brandLabel ? (
-          groupHref ? (
+        {/* T095 — attribution. Group-filed items attribute to the Group (link to the
+            Shop page). Individual items attribute to the Member with a conditional
+            link gated by is_discoverable: link to /m/<handle> when discoverable,
+            plain text otherwise. The seller's privacy never blocks the item's
+            visibility — "outputs surface, people opt in." */}
+        {product.attribution.kind === 'group' && groupHref ? (
+          <p className="mt-3 text-sm font-medium" data-testid="product-attribution">
+            Sold by{' '}
             <Link
               href={groupHref}
-              data-testid="product-brand-link"
-              className="mt-3 inline-block text-sm font-medium text-[--color-accent] hover:underline"
+              data-testid="product-attribution-link"
+              className="text-[--color-accent] hover:underline"
             >
-              {product.brandLabel}
+              {product.attribution.name}
             </Link>
-          ) : (
-            <p data-testid="product-brand" className="mt-3 text-sm font-medium">
-              {product.brandLabel}
-            </p>
-          )
+          </p>
+        ) : product.attribution.kind === 'member' ? (
+          <p className="mt-3 text-sm font-medium" data-testid="product-attribution">
+            Sold by{' '}
+            {product.attribution.isDiscoverable ? (
+              <Link
+                href={`/m/${product.attribution.handle}`}
+                data-testid="product-attribution-link"
+                className="text-[--color-accent] hover:underline"
+              >
+                {product.attribution.displayName}
+              </Link>
+            ) : (
+              <span data-testid="product-attribution-text">
+                {product.attribution.displayName}
+              </span>
+            )}
+          </p>
         ) : null}
 
         {/* Locally Made badge slot — empty when madeAtPlaceId is null (F038
@@ -105,16 +123,9 @@ export function ProductPublicPage({ product, groupHref, isOwner = false }: Produ
           </section>
         ) : null}
 
-        <p className="mt-6 text-sm text-[--color-fg-muted]">
-          Sold by{' '}
-          <Link
-            href={`/m/${product.owner.handle}`}
-            data-testid="product-owner-link"
-            className="font-medium text-[--color-accent] hover:underline"
-          >
-            {product.owner.displayName}
-          </Link>
-        </p>
+        {/* T095 — the standalone "Sold by [Member]" line is folded into the
+            attribution block above; the page no longer makes a hardcoded link to
+            /m/<handle>. */}
 
         {isOwner ? (
           <div className="mt-6">

@@ -1,5 +1,6 @@
 // T082 — Unit tests for the gathering resolver.
-// Trace: F034 § Item URL pattern + § Item page shows next occurrence + Share-link.
+// T095 — Updated: attribution model (Group vs Member + conditional link).
+// Trace: F034 § Item URL pattern + § Item page shows attribution + next occurrence + Share-link.
 
 import { describe, it, expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -98,7 +99,8 @@ function gatheringRow(overrides: Record<string, unknown> = {}) {
     id: ITEM_ID,
     title: 'Thursday Run Club',
     description: 'Easy 5k, all paces.',
-    brand_label: null,
+    brand_label: "Drake's Brews and Bites",
+    member_id: 'mem-sam',
     item_gatherings: {
       starts_at: '2099-06-04T18:00:00+00:00',
       ends_at: null,
@@ -113,8 +115,8 @@ function gatheringRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('resolveGathering — group path', () => {
-  it('maps the matching row to the result shape', async () => {
+describe('resolveGathering — group path (T095 Group-attribution)', () => {
+  it('attributes to the Group (kind=group, name=brand_label)', async () => {
     const supabase = makeSupabase({
       groups: { data: { id: 'g1' } },
       items: { data: [gatheringRow()] },
@@ -129,8 +131,20 @@ describe('resolveGathering — group path', () => {
     expect(result!.capacity).toBe(30)
     expect(result!.costCents).toBeNull()
     expect(result!.whatToBring).toBe('Water + shoes')
-    expect(result!.owner).toEqual({ handle: 'sam', displayName: 'Sam Rivera' })
+    expect(result!.attribution).toEqual({ kind: 'group', name: "Drake's Brews and Bites" })
     expect(result!.location).toEqual({ label: "Drake's" })
+  })
+
+  it('returns null when a Group-filed gathering has no brand_label', async () => {
+    const supabase = makeSupabase({
+      groups: { data: { id: 'g1' } },
+      items: { data: [gatheringRow({ brand_label: null })] },
+    })
+    const result = await resolveGathering(supabase, {
+      groupSlug: 'drakes-a1',
+      itemSlug: 'thursday-run-club-deadbeef',
+    })
+    expect(result).toBeNull()
   })
 
   it('returns null when no row id matches the slug fragment', async () => {
@@ -146,11 +160,12 @@ describe('resolveGathering — group path', () => {
   })
 })
 
-describe('resolveGathering — individual path', () => {
-  it('resolves a free gathering hosted by a Member (no brand)', async () => {
+describe('resolveGathering — individual path (T095 Member-attribution + conditional link)', () => {
+  it('attributes to the Member with isDiscoverable=true', async () => {
     const supabase = makeSupabase({
-      members: { data: { id: 'm1' } },
+      members: { data: { id: 'mem-sam' } },
       items: { data: [gatheringRow({ brand_label: null })] },
+      member_public_discoverability: { data: { is_discoverable: true } },
     })
     const result = await resolveGathering(supabase, {
       handle: 'sam',
@@ -158,6 +173,24 @@ describe('resolveGathering — individual path', () => {
     })
     expect(result).not.toBeNull()
     expect(result!.brandLabel).toBeNull()
-    expect(result!.costCents).toBeNull()
+    expect(result!.attribution).toEqual({
+      kind: 'member',
+      handle: 'sam',
+      displayName: 'Sam Rivera',
+      isDiscoverable: true,
+    })
+  })
+
+  it('attributes to the Member with isDiscoverable=false (plain-text fallback)', async () => {
+    const supabase = makeSupabase({
+      members: { data: { id: 'mem-sam' } },
+      items: { data: [gatheringRow({ brand_label: null })] },
+      member_public_discoverability: { data: { is_discoverable: false } },
+    })
+    const result = await resolveGathering(supabase, {
+      handle: 'sam',
+      itemSlug: 'thursday-run-club-deadbeef',
+    })
+    expect((result!.attribution as { isDiscoverable: boolean }).isDiscoverable).toBe(false)
   })
 })

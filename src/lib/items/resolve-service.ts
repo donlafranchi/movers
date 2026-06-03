@@ -12,6 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseIdFragment } from './resolve-product'
+import type { ItemAttribution } from './resolve-product'
 import type { RateModel } from '@/components/sell/ServiceComposer'
 
 export interface ResolvedServiceAnchor {
@@ -26,9 +27,10 @@ export interface ResolvedService {
   rateCents: number | null
   /** True when a service_area_geography circle is set (drives the area section). */
   hasServiceArea: boolean
-  /** Group display_name (denormalized onto items.brand_label); null when individual. */
+  /** Group display_name (denormalized onto items.brand_label); null when individual.
+   *  Kept for generateMetadata page-title fallback; attribution drives all surfaces. */
   brandLabel: string | null
-  owner: { handle: string; displayName: string }
+  attribution: ItemAttribution
   /** Optional anchor Location label (the service-area center). */
   anchor: ResolvedServiceAnchor | null
 }
@@ -57,6 +59,7 @@ interface ServiceRow {
   title: string
   description: string
   brand_label: string | null
+  member_id: string
   item_services:
     | {
         rate_model: string
@@ -65,6 +68,7 @@ interface ServiceRow {
       }[]
     | { rate_model: string; rate_cents: number | null; service_area_geography: string | null }
     | null
+  // owner embed only present on the individual-sale path.
   owner:
     | { handle: string; display_name: string }[]
     | { handle: string; display_name: string }
@@ -111,14 +115,19 @@ export async function resolveService(
   }
   if (!scope) return null
 
+  // T095 — Group-filed services attribute to the Group (no members embed needed);
+  // individual services embed the author + read discoverability separately.
+  const baseSelect =
+    'id, title, description, brand_label, member_id, ' +
+    'item_services(rate_model, rate_cents, service_area_geography), ' +
+    'item_locations(removed_at, locations(label))'
+  const select = scope.individual
+    ? baseSelect + ', owner:members!member_id(handle, display_name)'
+    : baseSelect
+
   let query = supabase
     .from('items')
-    .select(
-      'id, title, description, brand_label, ' +
-        'item_services(rate_model, rate_cents, service_area_geography), ' +
-        'owner:members!member_id(handle, display_name), ' +
-        'item_locations(removed_at, locations(label))',
-    )
+    .select(select)
     .eq(scope.column, scope.value)
     .eq('kind', 'service')
     .eq('state', 'published')
@@ -133,12 +142,30 @@ export async function resolveService(
   if (!row) return null
 
   const svc = firstEmbed(row.item_services)
-  const owner = firstEmbed(row.owner)
-  if (!owner) return null
 
   // First active (non-removed) anchor Location.
   const activeLoc = (row.item_locations ?? []).find((il) => il.removed_at === null)
   const locEmbed = activeLoc ? firstEmbed(activeLoc.locations) : null
+
+  let attribution: ItemAttribution
+  if (scope.individual) {
+    const owner = firstEmbed(row.owner)
+    if (!owner) return null
+    const { data: disc } = await supabase
+      .from('member_public_discoverability')
+      .select('is_discoverable')
+      .eq('member_id', row.member_id)
+      .maybeSingle()
+    attribution = {
+      kind: 'member',
+      handle: owner.handle,
+      displayName: owner.display_name,
+      isDiscoverable: (disc as { is_discoverable: boolean } | null)?.is_discoverable ?? false,
+    }
+  } else {
+    if (!row.brand_label) return null
+    attribution = { kind: 'group', name: row.brand_label }
+  }
 
   return {
     itemId: row.id,
@@ -148,7 +175,7 @@ export async function resolveService(
     rateCents: svc?.rate_cents ?? null,
     hasServiceArea: Boolean(svc?.service_area_geography),
     brandLabel: row.brand_label,
-    owner: { handle: owner.handle, displayName: owner.display_name },
+    attribution,
     anchor: locEmbed ? { label: locEmbed.label } : null,
   }
 }

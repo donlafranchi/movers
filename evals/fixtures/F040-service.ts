@@ -24,6 +24,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { markMemberDiscoverable } from './_member-privacy'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -339,6 +340,9 @@ async function ensureService(opts: {
  *  Call from `test.beforeAll`. Idempotent across reruns. */
 export async function seedF040Fixture(): Promise<SeededF040Fixture> {
   const tomasId = await ensureIdentity(TOMAS)
+  // T095 — opt Tomas into discoverability so the individual-path attribution
+  // link to /m/<handle> renders (post-T095 default is false).
+  await markMemberDiscoverable(adminClient(), tomasId)
   const anchorId = await ensureLocation({
     label: ANCHOR_LABEL,
     founderMemberId: tomasId,

@@ -1,5 +1,6 @@
 // T083 — Unit tests for <ServicePublicPage>.
-// Trace: F040 § Item page shows brand + service area + pricing; § No Locally Made step.
+// T095 — Updated: attribution model (Group vs Member + conditional link).
+// Trace: F040 § Item page shows attribution + service area + pricing; § No Locally Made step.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
@@ -18,14 +19,14 @@ function service(overrides: Partial<ResolvedService> = {}): ResolvedService {
     rateCents: 9500,
     hasServiceArea: true,
     brandLabel: 'Maya Music',
-    owner: { handle: 'maya', displayName: 'Maya Chen' },
+    attribution: { kind: 'group', name: 'Maya Music' },
     anchor: { label: 'Studio' },
     ...overrides,
   }
 }
 
-describe('T083 — ServicePublicPage', () => {
-  it('renders title, hourly rate, brand link, owner link, and service area', () => {
+describe('T083/T095 — ServicePublicPage', () => {
+  it('Group-attributed: "Offered by [Group]" links to the Shop page', () => {
     render(
       <ServicePublicPage
         service={service()}
@@ -36,13 +37,49 @@ describe('T083 — ServicePublicPage', () => {
     expect(screen.getByTestId('service-rate')).toHaveTextContent('$95.00 / hr')
     expect(screen.getByTestId('service-area')).toBeInTheDocument()
 
-    const brand = screen.getByTestId('service-brand-link')
-    expect(brand).toHaveTextContent('Maya Music')
-    expect(brand).toHaveAttribute('href', '/p/ca/sacramento/oak-park/g/maya-music-a1')
+    const attribution = screen.getByTestId('service-attribution')
+    expect(attribution).toHaveTextContent('Offered by Maya Music')
+    const link = screen.getByTestId('service-attribution-link')
+    expect(link).toHaveAttribute('href', '/p/ca/sacramento/oak-park/g/maya-music-a1')
+  })
 
-    const owner = screen.getByTestId('service-owner-link')
-    expect(owner).toHaveTextContent('Maya Chen')
-    expect(owner).toHaveAttribute('href', '/m/maya')
+  it('Member-attributed, discoverable: "Offered by [Member]" links to /m/<handle>', () => {
+    render(
+      <ServicePublicPage
+        service={service({
+          brandLabel: null,
+          attribution: {
+            kind: 'member',
+            handle: 'maya',
+            displayName: 'Maya Chen',
+            isDiscoverable: true,
+          },
+        })}
+        groupHref={null}
+      />,
+    )
+    const link = screen.getByTestId('service-attribution-link')
+    expect(link).toHaveAttribute('href', '/m/maya')
+    expect(link).toHaveTextContent('Maya Chen')
+  })
+
+  it('Member-attributed, non-discoverable: "Offered by [Member]" renders as plain text', () => {
+    render(
+      <ServicePublicPage
+        service={service({
+          brandLabel: null,
+          attribution: {
+            kind: 'member',
+            handle: 'maya',
+            displayName: 'Maya Chen',
+            isDiscoverable: false,
+          },
+        })}
+        groupHref={null}
+      />,
+    )
+    expect(screen.queryByTestId('service-attribution-link')).not.toBeInTheDocument()
+    expect(screen.getByTestId('service-attribution-text')).toHaveTextContent('Maya Chen')
   })
 
   it('renders "Request a quote" for the quote model', () => {
@@ -97,11 +134,5 @@ describe('T083 — ServicePublicPage', () => {
     render(<ServicePublicPage service={service()} groupHref={null} />)
     expect(screen.queryByTestId('product-made-badge')).not.toBeInTheDocument()
     expect(screen.queryByText(/Locally Made/i)).not.toBeInTheDocument()
-  })
-
-  it('renders the brand as plain text (no link) when no groupHref', () => {
-    render(<ServicePublicPage service={service()} groupHref={null} />)
-    expect(screen.queryByTestId('service-brand-link')).not.toBeInTheDocument()
-    expect(screen.getByTestId('service-brand')).toHaveTextContent('Maya Music')
   })
 })

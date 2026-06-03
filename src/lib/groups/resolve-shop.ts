@@ -20,6 +20,8 @@ export interface ShopFounder {
   handle: string
   displayName: string
   avatarUrl: string | null
+  /** T095 — gates the conditional link on the "Founded by" line; plain text when false. */
+  isDiscoverable: boolean
 }
 
 export interface ResolvedShop {
@@ -78,8 +80,8 @@ interface ShopRow {
     | { display_name: string; public_description: string }
     | null
   founder:
-    | { handle: string; display_name: string; avatar_url: string | null }[]
-    | { handle: string; display_name: string; avatar_url: string | null }
+    | { id: string; handle: string; display_name: string; avatar_url: string | null }[]
+    | { id: string; handle: string; display_name: string; avatar_url: string | null }
     | null
 }
 
@@ -92,7 +94,7 @@ export async function resolveShop(
     .select(
       'id, slug, kind, lifecycle_state, anchor_location_id, ' +
         'group_businesses(display_name, public_description), ' +
-        'founder:members!founder_member_id(handle, display_name, avatar_url)',
+        'founder:members!founder_member_id(id, handle, display_name, avatar_url)',
     )
     .eq('slug', slug)
     .eq('kind', 'business')
@@ -104,6 +106,20 @@ export async function resolveShop(
   const row = data as unknown as ShopRow
   const biz = firstEmbed(row.group_businesses)
   const founderRow = firstEmbed(row.founder)
+
+  // T095 — founder's discoverability drives the conditional link on "Founded by".
+  // Read from the anon-readable projection view (migration 030); the base
+  // member_privacy table is owner-only RLS so a direct embed would always return
+  // null for non-owners.
+  let founderIsDiscoverable = false
+  if (founderRow) {
+    const { data: disc } = await supabase
+      .from('member_public_discoverability')
+      .select('is_discoverable')
+      .eq('member_id', founderRow.id)
+      .maybeSingle()
+    founderIsDiscoverable = (disc as { is_discoverable: boolean } | null)?.is_discoverable ?? false
+  }
 
   return {
     groupId: row.id,
@@ -117,6 +133,7 @@ export async function resolveShop(
           handle: founderRow.handle,
           displayName: founderRow.display_name,
           avatarUrl: founderRow.avatar_url,
+          isDiscoverable: founderIsDiscoverable,
         }
       : null,
   }

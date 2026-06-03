@@ -51,19 +51,42 @@ export function ShopPublicPage({ shop, badge, items, loggedIn }: Props) {
 
         {shop.founder && (
           <div data-testid="shop-founder" className="flex items-center gap-2">
-            <a href={`/m/${shop.founder.handle}`} className="flex items-center gap-2">
-              {shop.founder.avatarUrl && (
-                // Decorative: the adjacent name text labels the link, so an
-                // alt would make the link name redundant ("Maya avatar Maya").
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={shop.founder.avatarUrl}
-                  alt=""
-                  className="h-8 w-8 rounded-full object-cover"
-                />
-              )}
-              <span className="text-sm text-gray-700">{shop.founder.displayName}</span>
-            </a>
+            {/* T095 — link only when the founder has opted into discoverability;
+                otherwise render the name as plain text. The Shop is public regardless
+                (Groups are public-by-default); only the personal-profile link is gated. */}
+            {shop.founder.isDiscoverable ? (
+              <a
+                href={`/m/${shop.founder.handle}`}
+                data-testid="shop-founder-link"
+                className="flex items-center gap-2"
+              >
+                {shop.founder.avatarUrl && (
+                  // Decorative: the adjacent name text labels the link.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={shop.founder.avatarUrl}
+                    alt=""
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                )}
+                <span className="text-sm text-gray-700">{shop.founder.displayName}</span>
+              </a>
+            ) : (
+              <span
+                data-testid="shop-founder-text"
+                className="flex items-center gap-2"
+              >
+                {shop.founder.avatarUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={shop.founder.avatarUrl}
+                    alt=""
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                )}
+                <span className="text-sm text-gray-700">{shop.founder.displayName}</span>
+              </span>
+            )}
           </div>
         )}
 

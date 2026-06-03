@@ -6,6 +6,8 @@ import {
   NADIA,
   THEO,
   GHOST,
+  CONSUMER,
+  VAULT,
   LISTED_GROUP,
   UNLISTED_GROUP,
   ITEM,
@@ -116,6 +118,55 @@ test.describe('F032 — Viewer finds a member page and follows', () => {
     test('Given a handle that does not exist | When loaded | Then 404', async ({ page }) => {
       const res = await page.goto('/m/nobody-f032-does-not-exist')
       expect(res?.status()).toBe(404)
+    })
+  })
+
+  // T095 — discoverability is private-by-default; the F032 target (Nadia) only
+  // renders to anon because she opted into discoverable+public (above).
+  test.describe('Beat 6 — Private-by-default gates anonymous discovery', () => {
+    test('Given a members_only (non-discoverable) Member | When an anon visitor loads the page | Then 404 (existence is not leaked)', async ({
+      page,
+    }) => {
+      const res = await page.goto(`/m/${CONSUMER.handle}`)
+      expect(res?.status()).toBe(404)
+    })
+
+    test('Given the same Member | When a signed-in viewer opens the direct URL | Then the page renders (members_only allows signed-in) but carries robots noindex', async ({
+      page,
+    }) => {
+      await signIn(page, THEO.email, THEO.password)
+      const res = await page.goto(`/m/${CONSUMER.handle}`)
+      expect(res?.status()).toBe(200)
+      await expect(page.getByTestId('member-name')).toHaveText(CONSUMER.displayName)
+      // Non-discoverable → must not be indexable.
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+    })
+
+    test('Given Nadia (discoverable + public) | When her page loads | Then no robots noindex (indexable)', async ({
+      page,
+    }) => {
+      await page.goto(NADIA_URL)
+      await expect(page.locator('meta[name="robots"]')).toHaveCount(0)
+    })
+  })
+
+  test.describe('Beat 7 — Private profile: tombstone for signed-in, 404 for anon', () => {
+    test('Given a private Member | When a signed-in non-self viewer opens the URL | Then a tombstone renders (not the profile)', async ({
+      page,
+    }) => {
+      await signIn(page, THEO.email, THEO.password)
+      const res = await page.goto(`/m/${VAULT.handle}`)
+      expect(res?.status()).toBe(200)
+      await expect(page.getByTestId('member-private-tombstone')).toBeVisible()
+      await expect(page.getByTestId('member-name')).toHaveCount(0)
+    })
+
+    test('Given the same private Member | When an anon visitor opens the URL | Then 404 (no tombstone, existence not leaked)', async ({
+      page,
+    }) => {
+      const res = await page.goto(`/m/${VAULT.handle}`)
+      expect(res?.status()).toBe(404)
+      await expect(page.getByTestId('member-private-tombstone')).toHaveCount(0)
     })
   })
 })

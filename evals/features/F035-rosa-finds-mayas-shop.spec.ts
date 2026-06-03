@@ -50,14 +50,16 @@ test.describe("F035 — Rosa finds Maya's Shop", () => {
       // anchor Location's brand_label. The <h1> must be the Group's display_name.
       await expect(page.getByTestId("shop-name")).toHaveText(SHOP.brandName);
 
-      // Then — founder Member name + link to /m/{handle}
+      // Then — founder Member name + conditional link to /m/{handle} (T095).
       // Why: scenario beat 1 Why — per groups.md § No-personhood guarantees, the
       // Group surface keeps a named human visible as load-bearing accountability.
-      // The founder link is the structural commitment to person-anchoring; the
-      // link target must resolve to the founder's Member page.
+      // T095: the founder name is always visible (plain text or link); the link
+      // target resolves to the founder's Member page IFF the founder has opted
+      // into discoverability. Eval fixture sets is_discoverable=true on MAYA so
+      // this beat exercises the link path; plain-text fallback is unit-tested.
       const founder = page.getByTestId("shop-founder");
       await expect(founder).toContainText(MAYA.displayName);
-      await expect(founder.getByRole("link")).toHaveAttribute(
+      await expect(page.getByTestId("shop-founder-link")).toHaveAttribute(
         "href",
         `/m/${MAYA.handle}`,
       );
