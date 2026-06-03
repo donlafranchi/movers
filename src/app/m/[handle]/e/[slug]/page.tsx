@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase-server'
 import { resolveGathering, nextOccurrence } from '@/lib/items/resolve-gathering'
+import { isItemOwner } from '@/lib/items/is-item-owner'
 import { GatheringPublicPage } from '@/components/item/GatheringPublicPage'
 
 interface Props {
@@ -46,12 +47,17 @@ export default async function MemberGatheringPage({ params }: Props) {
   if (!gathering) {
     notFound()
   }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const isOwner = await isItemOwner(supabase, gathering.itemId, user?.id ?? null)
   return (
     <GatheringPublicPage
       gathering={gathering}
       groupHref={null}
       nextOccurrenceLabel={occurrenceLabel(gathering.startsAt, gathering.recurrenceRule)}
       shareUrl={`/m/${handle}/e/${slug}`}
+      isOwner={isOwner}
     />
   )
 }
