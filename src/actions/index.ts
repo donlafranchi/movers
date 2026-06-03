@@ -16,7 +16,7 @@ import {
   memberUnfollow,
 } from './member'
 import { groupCreate, groupUpdateDraft, groupActivate } from './group'
-import { itemCreate, itemPublish, itemAttachLocation } from './item'
+import { itemCreate, itemPublish, itemAttachLocation, itemQrCardRequest } from './item'
 import type { NamedActionHandler } from './_lib/handler'
 
 const REGISTRY: Record<string, NamedActionHandler<unknown, unknown>> = {
@@ -27,6 +27,7 @@ const REGISTRY: Record<string, NamedActionHandler<unknown, unknown>> = {
   'item.create': itemCreate as unknown as NamedActionHandler<unknown, unknown>,
   'item.publish': itemPublish as unknown as NamedActionHandler<unknown, unknown>,
   'item.attach_location': itemAttachLocation as unknown as NamedActionHandler<unknown, unknown>,
+  'item.qr_card.request': itemQrCardRequest as unknown as NamedActionHandler<unknown, unknown>,
   'member.business_jurisdiction.set': memberBusinessJurisdictionSet as unknown as NamedActionHandler<unknown, unknown>,
   'member.business_jurisdiction.remove': memberBusinessJurisdictionRemove as unknown as NamedActionHandler<unknown, unknown>,
   'member.place_interest.add': memberPlaceInterestAdd as unknown as NamedActionHandler<unknown, unknown>,
@@ -47,7 +48,7 @@ export function listHandlers(): string[] {
 // Re-exports for convenience.
 export { memberCreate, memberPlaceInterestAdd, memberInterestsAdd, memberFollow, memberUnfollow } from './member'
 export { groupCreate, groupUpdateDraft, groupActivate } from './group'
-export { itemCreate, itemPublish, itemAttachLocation } from './item'
+export { itemCreate, itemPublish, itemAttachLocation, itemQrCardRequest } from './item'
 export {
   ActionError,
   ValidationError,

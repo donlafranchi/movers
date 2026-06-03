@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase-server'
 import { resolveService } from '@/lib/items/resolve-service'
+import { isItemOwner } from '@/lib/items/is-item-owner'
 import { ServicePublicPage } from '@/components/item/ServicePublicPage'
 
 interface Props {
@@ -34,6 +35,10 @@ export default async function MemberServicePage({ params }: Props) {
   if (!service) {
     notFound()
   }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const isOwner = await isItemOwner(supabase, service.itemId, user?.id ?? null)
   // Individual services have no Group page to resolve up to.
-  return <ServicePublicPage service={service} groupHref={null} />
+  return <ServicePublicPage service={service} groupHref={null} isOwner={isOwner} />
 }
