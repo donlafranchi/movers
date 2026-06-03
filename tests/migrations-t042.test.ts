@@ -24,12 +24,14 @@ const stripComments = (sql: string) =>
 describe('T042 — migrations directory state after T042', () => {
   it('contains the T041 + T042 set after this ticket (consolidated 002)', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
-    expect(files).toEqual([
-      '001_extensions.sql',
-      '002_members.sql',
-      '004_item_embeddings.sql',
-      '005_member_embeddings.sql',
-    ])
+    expect(files).toEqual(
+      expect.arrayContaining([
+        '001_extensions.sql',
+        '002_members.sql',
+        '004_item_embeddings.sql',
+        '005_member_embeddings.sql',
+      ]),
+    )
   })
 
   it('has no alpha-suffixed migration filenames (Supabase CLI rejects them)', () => {

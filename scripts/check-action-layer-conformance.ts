@@ -22,7 +22,7 @@
 //   1  one or more violations — printed to stderr (or stdout JSON in --json mode)
 //   2  internal error (script failure, not a code violation)
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, type Dirent } from 'node:fs'
 import { resolve, relative, sep } from 'node:path'
 import { execSync } from 'node:child_process'
 
@@ -117,7 +117,7 @@ const PROBE_DIRS = [
 
 function walkTs(dir: string, out: string[]): void {
   if (!existsSync(dir)) return
-  let entries: ReturnType<typeof readdirSync>
+  let entries: Dirent[]
   try {
     entries = readdirSync(dir, { withFileTypes: true })
   } catch {
