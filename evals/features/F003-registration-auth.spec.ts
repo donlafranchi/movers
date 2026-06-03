@@ -1,103 +1,83 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
 
-test.use({ viewport: { width: 390, height: 844 } });
+// F003 (rebuilt for F030): email-first signup/login.
+//
+// The pre-rebuild version of this spec targeted `/signup`, `/login`, map pins,
+// and `/register-business` — all removed in the primitives rebuild. Rewritten
+// against the current email-first signup page (/auth/signup, T090): a single
+// "enter email" step that detects new vs returning users. Local dev
+// auto-confirms (config.toml enable_confirmations=false), so a fresh signup
+// yields a live session immediately.
 
-test.describe('F003: Auth — Account Creation and Login', () => {
-  const testEmail = `testuser+${Date.now()}@example.com`;
-  const testPassword = 'securepass123';
+test.use({ viewport: { width: 390, height: 844 } })
 
-  test('sign-up page is accessible', async ({ page }) => {
-    await page.goto('/signup');
-    await expect(page.locator('[data-testid="signup-form"]')).toBeVisible();
-  });
+test.describe('F003 — Email-first account creation and login', () => {
+  test('the signup page opens on a single email step', async ({ page }) => {
+    await page.goto('/auth/signup')
+    await expect(page.getByTestId('signup-form')).toBeVisible()
+    await expect(page.getByTestId('email-input')).toBeVisible()
+    // Password is not requested until the email is classified.
+    await expect(page.getByTestId('password-input')).toHaveCount(0)
+  })
 
-  test('user can create an account with email and password', async ({ page }) => {
-    await page.goto('/signup');
-    await page.locator('[data-testid="email-input"]').fill(testEmail);
-    await page.locator('[data-testid="password-input"]').fill(testPassword);
-    await page.locator('[data-testid="signup-submit"]').click();
+  test('a malformed email is rejected before any account lookup', async ({ page }) => {
+    await page.goto('/auth/signup')
+    await page.getByTestId('email-input').fill('a@b') // passes native type=email, fails our regex
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('auth-error')).toBeVisible()
+  })
 
-    // Should be authenticated and redirected
-    await expect(page).not.toHaveURL(/\/signup/, { timeout: 10000 });
-  });
+  test('an unknown email advances to "set a password"', async ({ page }) => {
+    await page.goto('/auth/signup')
+    await page.getByTestId('email-input').fill(`unknown+${Date.now()}@example.test`)
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('set-password-heading')).toBeVisible()
+    await expect(page.getByTestId('password-input')).toBeVisible()
+    // Magic-link is offered as a secondary option below the password field.
+    await expect(page.getByTestId('magic-link-secondary')).toBeVisible()
+  })
 
-  test('authenticated user is redirected to map or registration form', async ({ page }) => {
-    await page.goto('/signup');
-    await page.locator('[data-testid="email-input"]').fill(`redirect+${Date.now()}@example.com`);
-    await page.locator('[data-testid="password-input"]').fill(testPassword);
-    await page.locator('[data-testid="signup-submit"]').click();
+  test('a password under 8 characters is rejected on the set-password step', async ({ page }) => {
+    await page.goto('/auth/signup')
+    await page.getByTestId('email-input').fill(`weak+${Date.now()}@example.test`)
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('set-password-heading')).toBeVisible()
+    await page.getByTestId('password-input').fill('short')
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('auth-error')).toBeVisible()
+  })
 
-    // Should redirect to map or business registration
-    await expect(page).toHaveURL(/^\/(register-business)?$/, { timeout: 10000 });
-  });
+  test('a new email/password account is created and the session lands authenticated', async ({
+    page,
+  }) => {
+    const email = `create+${Date.now()}@example.test`
+    await page.goto('/auth/signup')
+    await page.getByTestId('email-input').fill(email)
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('set-password-heading')).toBeVisible()
+    await page.getByTestId('password-input').fill('F003-strong-pass')
+    await page.getByTestId('submit-button').click()
+    // Auto-confirm → live session → redirected off the signup page (to onboarding).
+    await page.waitForURL((url) => !url.pathname.startsWith('/auth/signup'), { timeout: 10000 })
+  })
 
-  test('existing user can log in', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('[data-testid="email-input"]').fill('existing@example.com');
-    await page.locator('[data-testid="password-input"]').fill('password123');
-    await page.locator('[data-testid="login-submit"]').click();
+  test('a returning email is detected and routed to "enter password"', async ({ page }) => {
+    // Create an account, then re-enter the same email: detection must now flip
+    // to the returning (enter-password) phase rather than set-password.
+    const email = `returning+${Date.now()}@example.test`
+    await page.goto('/auth/signup')
+    await page.getByTestId('email-input').fill(email)
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('set-password-heading')).toBeVisible()
+    await page.getByTestId('password-input').fill('F003-strong-pass')
+    await page.getByTestId('submit-button').click()
+    await page.waitForURL((url) => !url.pathname.startsWith('/auth/signup'), { timeout: 10000 })
 
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-  });
-
-  test('session persists across page reloads', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('[data-testid="email-input"]').fill('existing@example.com');
-    await page.locator('[data-testid="password-input"]').fill('password123');
-    await page.locator('[data-testid="login-submit"]').click();
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-
-    await page.reload();
-    // User should still be authenticated after reload
-    const signOutBtn = page.locator('[data-testid="sign-out-button"]');
-    await expect(signOutBtn).toBeVisible();
-  });
-
-  test('sign out clears session and returns to map', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('[data-testid="email-input"]').fill('existing@example.com');
-    await page.locator('[data-testid="password-input"]').fill('password123');
-    await page.locator('[data-testid="login-submit"]').click();
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-
-    await page.locator('[data-testid="sign-out-button"]').click();
-
-    // Should show sign-in prompt on support buttons
-    await page.waitForSelector('[data-testid="map-pin"]', { timeout: 10000 });
-    await page.locator('[data-testid="map-pin"]').first().click();
-    const signInPrompt = page.locator('[data-testid="sign-in-to-support"]');
-    await expect(signInPrompt).toBeVisible();
-  });
-
-  test('invalid email format shows validation error', async ({ page }) => {
-    await page.goto('/signup');
-    await page.locator('[data-testid="email-input"]').fill('notanemail');
-    await page.locator('[data-testid="password-input"]').fill(testPassword);
-    await page.locator('[data-testid="signup-submit"]').click();
-
-    const error = page.locator('[data-testid="email-error"]');
-    await expect(error).toBeVisible();
-  });
-
-  test('password under 8 characters shows validation error', async ({ page }) => {
-    await page.goto('/signup');
-    await page.locator('[data-testid="email-input"]').fill('short@example.com');
-    await page.locator('[data-testid="password-input"]').fill('short');
-    await page.locator('[data-testid="signup-submit"]').click();
-
-    const error = page.locator('[data-testid="password-error"]');
-    await expect(error).toBeVisible();
-  });
-
-  test('duplicate email shows error with link to login', async ({ page }) => {
-    await page.goto('/signup');
-    await page.locator('[data-testid="email-input"]').fill('existing@example.com');
-    await page.locator('[data-testid="password-input"]').fill(testPassword);
-    await page.locator('[data-testid="signup-submit"]').click();
-
-    const error = page.locator('[data-testid="duplicate-email-error"]');
-    await expect(error).toBeVisible();
-    const loginLink = error.locator('a');
-    await expect(loginLink).toHaveAttribute('href', /\/login/);
-  });
-});
+    // Re-enter the same email — now registered.
+    await page.goto('/auth/signup')
+    await page.getByTestId('email-input').fill(email)
+    await page.getByTestId('submit-button').click()
+    await expect(page.getByTestId('enter-password-heading')).toBeVisible()
+    await expect(page.getByTestId('set-password-heading')).toHaveCount(0)
+  })
+})

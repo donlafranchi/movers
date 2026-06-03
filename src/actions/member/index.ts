@@ -16,6 +16,14 @@ export {
   type MemberPlaceInterestRemoveResult,
 } from './place-interest-remove'
 
+// T086 — Interests handler
+export {
+  memberInterestsAdd,
+  memberInterestsAddInput,
+  type MemberInterestsAddInput,
+  type MemberInterestsAddResult,
+} from './interests-add'
+
 // T063 — Saved-search handlers
 export {
   memberSavedSearchCreate,

@@ -58,5 +58,23 @@ export function useAuth() {
     return { data, error }
   }, [])
 
-  return { user, loading, signUp, signIn, signOut, signInWithOtp, signInWithGoogle }
+  // F030: returning-user detection for the email-first signup page.
+  const checkEmailRegistered = useCallback(async (email: string) => {
+    const { data, error } = await supabase.rpc('email_is_registered', {
+      p_email: email,
+    })
+    if (error) throw error
+    return data === true
+  }, [])
+
+  return {
+    user,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    signInWithOtp,
+    signInWithGoogle,
+    checkEmailRegistered,
+  }
 }

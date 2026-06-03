@@ -43,3 +43,44 @@ export async function signIn(page: Page, email: string, password: string) {
   }
   throw lastErr
 }
+
+/**
+ * Drive the email-first signup page (/auth/signup, F030) for a NEW user:
+ * enter email → "set a password" → create account. Local dev auto-confirms
+ * (config.toml enable_confirmations=false), so signUp yields a live session and
+ * the page redirects to `next`. Resolves once we've navigated off /auth/signup.
+ */
+export async function signUpWithPassword(
+  page: Page,
+  email: string,
+  password: string,
+) {
+  await page.goto('/auth/signup')
+  await page.locator('[data-testid="email-input"]').fill(email)
+  await page.locator('[data-testid="submit-button"]').click()
+  // Unknown email → set-password phase.
+  await page.locator('[data-testid="set-password-heading"]').waitFor({ state: 'visible' })
+  await page.locator('[data-testid="password-input"]').fill(password)
+  await page.locator('[data-testid="submit-button"]').click()
+  await page.waitForURL((url) => !url.pathname.startsWith('/auth/signup'), { timeout: 10000 })
+}
+
+/**
+ * Drive the email-first signup page for a RETURNING user: enter email →
+ * "enter password" → log in. Asserts the returning-user phase appears (proving
+ * detection) before submitting. Resolves once navigated off /auth/signup.
+ */
+export async function signInViaEmailFirst(
+  page: Page,
+  email: string,
+  password: string,
+) {
+  await page.goto('/auth/signup')
+  await page.locator('[data-testid="email-input"]').fill(email)
+  await page.locator('[data-testid="submit-button"]').click()
+  // Registered email → enter-password phase.
+  await page.locator('[data-testid="enter-password-heading"]').waitFor({ state: 'visible' })
+  await page.locator('[data-testid="password-input"]').fill(password)
+  await page.locator('[data-testid="submit-button"]').click()
+  await page.waitForURL((url) => !url.pathname.startsWith('/auth/signup'), { timeout: 10000 })
+}
