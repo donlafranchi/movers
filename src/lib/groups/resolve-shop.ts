@@ -44,6 +44,16 @@ export interface LocalOwnerBadge {
   label: string
 }
 
+/** T096 — the acting owner's own claim state, backing the F037 management widget.
+ *  `zip` is null when the owner hasn't claimed; `isProximal` reports whether that
+ *  ZIP currently earns the public badge (render-time derivation, not validation). */
+export interface OwnerClaim {
+  zip: string | null
+  isProximal: boolean
+}
+
+const LOCAL_OWNER_LABEL = 'Claimed local owner'
+
 /**
  * Split a place catch-all slug array at the `/g/` marker.
  * `['ca','sacramento','oak-park','g','oak-park-sourdough']`
@@ -154,21 +164,89 @@ export async function resolveShopItems(
   return (data as ShopItem[]).map((r) => ({ id: r.id, title: r.title, kind: r.kind }))
 }
 
+/** Render-time proximity test (T075's SECURITY DEFINER function, granted to
+ *  anon + authenticated). Null-safe: any RPC error or non-true result → false,
+ *  so a missing-data join never earns the badge. */
+async function zipIsProximal(
+  supabase: SupabaseClient,
+  zip: string,
+  locationId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('zip_is_proximal_to_location', {
+    zip,
+    location_id: locationId,
+  })
+  if (error) return false
+  return data === true
+}
+
 /**
- * Beat 2 — "Claimed local owner" badge.
+ * Beat 2 — "Claimed local owner" badge (F037 read path over T075's substrate).
  *
- * FORWARD-DEP (F035 scope note): the data this needs —
- * `member_business_jurisdictions` + `public.zip_is_proximal_to_location()` —
- * ships with F037 / S-jurisdictions and does not exist yet. Until it does,
- * there is nothing to evaluate, so the badge never renders and the surface
- * stays clean (no "not locally owned" negative space). This is the single
- * render-path seam: when the substrate lands, this resolver queries a current
- * owner's jurisdiction, runs the proximity test against the Shop's anchor
- * Location, and returns `{ label: 'Claimed local owner' }` (Tier 0) on a pass.
+ * Selects the Group's active jurisdiction rows (public-read RLS
+ * `mbj_select_public_active`) and runs the proximity test per ZIP. Returns the
+ * badge if ANY active owner's ZIP shares the anchor Location's MSA
+ * (OR-aggregation per `business-jurisdiction.md` line 50). Returns null when
+ * there is no anchor Location, no active row, or no ZIP passes — no
+ * "not locally owned" negative space.
  */
 export async function resolveLocalOwnerBadge(
-  _supabase: SupabaseClient,
-  _shop: { groupId: string; anchorLocationId: string | null },
+  supabase: SupabaseClient,
+  shop: { groupId: string; anchorLocationId: string | null },
 ): Promise<LocalOwnerBadge | null> {
+  if (!shop.anchorLocationId) return null
+  const { data, error } = await supabase
+    .from('member_business_jurisdictions')
+    .select('zip')
+    .eq('group_id', shop.groupId)
+    .is('removed_at', null)
+  if (error || !data) return null
+  for (const row of data as { zip: string }[]) {
+    if (await zipIsProximal(supabase, row.zip, shop.anchorLocationId)) {
+      return { label: LOCAL_OWNER_LABEL }
+    }
+  }
   return null
+}
+
+/**
+ * F037 owner widget — the acting viewer's own claim state for this Shop.
+ *
+ * Returns null unless the viewer is an active owner-role member of the Group
+ * (self-read RLS `memberships_select_self`), so non-owners and anon never see
+ * the management surface. For an owner, returns their own active jurisdiction
+ * ZIP (or null when unclaimed) plus whether it currently earns the badge.
+ */
+export async function resolveOwnerClaim(
+  supabase: SupabaseClient,
+  args: { groupId: string; anchorLocationId: string | null; viewerMemberId: string | null },
+): Promise<OwnerClaim | null> {
+  if (!args.viewerMemberId) return null
+
+  const { data: membership } = await supabase
+    .from('group_memberships')
+    .select('role')
+    .eq('group_id', args.groupId)
+    .eq('member_id', args.viewerMemberId)
+    .eq('role', 'owner')
+    .is('left_at', null)
+    .limit(1)
+    .maybeSingle()
+  if (!membership) return null
+
+  const { data: row } = await supabase
+    .from('member_business_jurisdictions')
+    .select('zip')
+    .eq('group_id', args.groupId)
+    .eq('member_id', args.viewerMemberId)
+    .is('removed_at', null)
+    .limit(1)
+    .maybeSingle()
+  const zip = (row as { zip: string } | null)?.zip ?? null
+  if (!zip) return { zip: null, isProximal: false }
+
+  const isProximal = args.anchorLocationId
+    ? await zipIsProximal(supabase, zip, args.anchorLocationId)
+    : false
+  return { zip, isProximal }
 }

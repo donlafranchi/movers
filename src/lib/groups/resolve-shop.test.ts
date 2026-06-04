@@ -7,6 +7,7 @@ import {
   splitGroupSlug,
   resolveShop,
   resolveLocalOwnerBadge,
+  resolveOwnerClaim,
 } from './resolve-shop'
 
 describe('splitGroupSlug', () => {
@@ -155,12 +156,135 @@ describe('resolveShop', () => {
   })
 })
 
+// T096 — jurisdiction-aware stub. Routes by table; the jurisdiction list query
+// (`.select('zip').eq(...).is(...)`) terminates on an awaited (thenable) chain,
+// while membership / single-jurisdiction reads terminate on `.maybeSingle()`.
+// `.rpc('zip_is_proximal_to_location', { zip, location_id })` resolves true when
+// the ZIP is in `proximalZips`.
+function makeJurisdictionStub(opts: {
+  activeRows?: { zip: string }[]
+  ownerMembership?: { role: string } | null
+  ownerRow?: { zip: string } | null
+  proximalZips?: string[]
+}) {
+  const proximal = new Set(opts.proximalZips ?? [])
+  return {
+    from(table: string) {
+      const chain: Record<string, unknown> = {}
+      const pass = () => chain
+      chain.select = pass
+      chain.eq = pass
+      chain.is = pass
+      chain.limit = pass
+      chain.maybeSingle = () =>
+        Promise.resolve(
+          table === 'group_memberships'
+            ? { data: opts.ownerMembership ?? null, error: null }
+            : { data: opts.ownerRow ?? null, error: null },
+        )
+      // Awaited (list) terminal — used by the badge resolver.
+      chain.then = (resolve: (v: unknown) => unknown) =>
+        resolve({ data: opts.activeRows ?? [], error: null })
+      return chain
+    },
+    rpc(_name: string, params: { zip: string; location_id: string }) {
+      return Promise.resolve({ data: proximal.has(params.zip), error: null })
+    },
+  } as unknown as Parameters<typeof resolveLocalOwnerBadge>[0]
+}
+
 describe('resolveLocalOwnerBadge', () => {
-  it('returns null until the S-jurisdictions substrate ships (F037 forward-dep)', async () => {
-    const badge = await resolveLocalOwnerBadge(makeSupabaseStub({ group: null }), {
+  it('returns null when there are no active jurisdiction rows', async () => {
+    const badge = await resolveLocalOwnerBadge(makeJurisdictionStub({ activeRows: [] }), {
       groupId: 'grp-1',
       anchorLocationId: 'loc-1',
     })
     expect(badge).toBeNull()
+  })
+
+  it('returns the badge when an active owner ZIP is proximal to the anchor', async () => {
+    const badge = await resolveLocalOwnerBadge(
+      makeJurisdictionStub({ activeRows: [{ zip: '95817' }], proximalZips: ['95817'] }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1' },
+    )
+    expect(badge).toEqual({ label: 'Claimed local owner' })
+  })
+
+  it('returns null when the active ZIP fails the proximity test', async () => {
+    const badge = await resolveLocalOwnerBadge(
+      makeJurisdictionStub({ activeRows: [{ zip: '90210' }], proximalZips: ['95817'] }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1' },
+    )
+    expect(badge).toBeNull()
+  })
+
+  it('OR-aggregates — badge renders if ANY active owner ZIP is proximal', async () => {
+    const badge = await resolveLocalOwnerBadge(
+      makeJurisdictionStub({
+        activeRows: [{ zip: '90210' }, { zip: '95816' }],
+        proximalZips: ['95816'],
+      }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1' },
+    )
+    expect(badge).toEqual({ label: 'Claimed local owner' })
+  })
+
+  it('returns null without calling the RPC when the anchor Location is null', async () => {
+    const badge = await resolveLocalOwnerBadge(
+      makeJurisdictionStub({ activeRows: [{ zip: '95817' }], proximalZips: ['95817'] }),
+      { groupId: 'grp-1', anchorLocationId: null },
+    )
+    expect(badge).toBeNull()
+  })
+})
+
+describe('resolveOwnerClaim', () => {
+  it('returns null for an anonymous viewer (no member id)', async () => {
+    const claim = await resolveOwnerClaim(makeJurisdictionStub({}), {
+      groupId: 'grp-1',
+      anchorLocationId: 'loc-1',
+      viewerMemberId: null,
+    })
+    expect(claim).toBeNull()
+  })
+
+  it('returns null when the viewer is not an active owner', async () => {
+    const claim = await resolveOwnerClaim(
+      makeJurisdictionStub({ ownerMembership: null }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1', viewerMemberId: 'rosa' },
+    )
+    expect(claim).toBeNull()
+  })
+
+  it('returns an empty claim when the owner has no active jurisdiction row', async () => {
+    const claim = await resolveOwnerClaim(
+      makeJurisdictionStub({ ownerMembership: { role: 'owner' }, ownerRow: null }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1', viewerMemberId: 'maya' },
+    )
+    expect(claim).toEqual({ zip: null, isProximal: false })
+  })
+
+  it('returns the owner ZIP with isProximal=true when it passes proximity', async () => {
+    const claim = await resolveOwnerClaim(
+      makeJurisdictionStub({
+        ownerMembership: { role: 'owner' },
+        ownerRow: { zip: '95817' },
+        proximalZips: ['95817'],
+      }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1', viewerMemberId: 'maya' },
+    )
+    expect(claim).toEqual({ zip: '95817', isProximal: true })
+  })
+
+  it('returns the owner ZIP with isProximal=false for a non-proximal claim', async () => {
+    const claim = await resolveOwnerClaim(
+      makeJurisdictionStub({
+        ownerMembership: { role: 'owner' },
+        ownerRow: { zip: '90210' },
+        proximalZips: ['95817'],
+      }),
+      { groupId: 'grp-1', anchorLocationId: 'loc-1', viewerMemberId: 'maya' },
+    )
+    expect(claim).toEqual({ zip: '90210', isProximal: false })
   })
 })
