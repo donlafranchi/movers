@@ -46,7 +46,15 @@ export function listHandlers(): string[] {
 }
 
 // Re-exports for convenience.
-export { memberCreate, memberPlaceInterestAdd, memberInterestsAdd, memberFollow, memberUnfollow } from './member'
+export {
+  memberCreate,
+  memberPlaceInterestAdd,
+  memberInterestsAdd,
+  memberFollow,
+  memberUnfollow,
+  memberBusinessJurisdictionSet,
+  memberBusinessJurisdictionRemove,
+} from './member'
 export { groupCreate, groupUpdateDraft, groupActivate } from './group'
 export { itemCreate, itemPublish, itemAttachLocation, itemQrCardRequest } from './item'
 export {

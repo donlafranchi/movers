@@ -5,17 +5,22 @@
 // (src/app/p/[...slug]/page.tsx); this component renders the resolved shape so
 // it stays unit-testable. The only client island is <FollowShopButton>.
 
-import type { ResolvedShop, ShopItem, LocalOwnerBadge } from '@/lib/groups/resolve-shop'
+import type { ResolvedShop, ShopItem, LocalOwnerBadge, OwnerClaim } from '@/lib/groups/resolve-shop'
 import { FollowShopButton } from './FollowShopButton'
+import { LocallyOwnedClaim } from './LocallyOwnedClaim'
+import { setJurisdictionAction, removeJurisdictionAction } from '@/app/p/[...slug]/claim-actions'
 
 interface Props {
   shop: ResolvedShop
   badge: LocalOwnerBadge | null
   items: ShopItem[]
   loggedIn: boolean
+  /** T097 (F037) — the acting owner's claim state; null for non-owners / anon
+   *  (the owner-only management widget renders only when this is non-null). */
+  ownerClaim?: OwnerClaim | null
 }
 
-export function ShopPublicPage({ shop, badge, items, loggedIn }: Props) {
+export function ShopPublicPage({ shop, badge, items, loggedIn, ownerClaim = null }: Props) {
   const isDraftPreview = shop.lifecycleState === 'draft'
 
   return (
@@ -98,6 +103,18 @@ export function ShopPublicPage({ shop, badge, items, loggedIn }: Props) {
           <FollowShopButton loggedIn={loggedIn} shopName={shop.displayName} />
         </div>
       </header>
+
+      {/* F037 — owner-only Locally Owned claim management. Rendered only when the
+          viewer is an active owner (ownerClaim resolved non-null); non-owners and
+          anon never see it. */}
+      {ownerClaim && (
+        <LocallyOwnedClaim
+          groupId={shop.groupId}
+          claim={ownerClaim}
+          onSet={setJurisdictionAction}
+          onRemove={removeJurisdictionAction}
+        />
+      )}
 
       <section className="mt-8">
         <h2 className="text-lg font-medium">Products &amp; services</h2>
