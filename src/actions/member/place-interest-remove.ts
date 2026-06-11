@@ -76,6 +76,29 @@ export const memberPlaceInterestRemove = defineHandler(
         }
       }
 
+      // T103 — when the primary_home is removed, recompute home_metro_id from
+      // whatever active primary_home remains (none, after this removal →
+      // resolve_home_metro(null) → null). Keeps the derived metro in sync with
+      // the locality. See DEVIATIONS.md / SPEC-PATCHES.md for why this hooks
+      // the place-interest path, not the spec's home_location_id path.
+      if (input.scopeKind === 'primary_home') {
+        await client.query(
+          `update public.members m
+              set home_metro_id = public.resolve_home_metro(
+                (select p.centroid
+                   from public.member_place_interests mpi
+                   join public.places p
+                     on p.id = mpi.place_id and p.deleted_at is null
+                  where mpi.member_id = m.id
+                    and mpi.scope_kind = 'primary_home'
+                    and mpi.removed_at is null
+                  limit 1)
+              )
+            where m.id = $1`,
+          [memberId],
+        )
+      }
+
       await appendEvent(txCtx, 'member_events', {
         member_id: memberId,
         event_kind: 'member.place_interest_removed',
