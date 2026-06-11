@@ -54,6 +54,8 @@ export {
   memberUnfollow,
   memberBusinessJurisdictionSet,
   memberBusinessJurisdictionRemove,
+  memberSavedSearchCreate,
+  memberSavedSearchRemove,
 } from './member'
 export { groupCreate, groupUpdateDraft, groupActivate } from './group'
 export { itemCreate, itemPublish, itemAttachLocation, itemQrCardRequest } from './item'
