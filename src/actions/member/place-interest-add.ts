@@ -113,6 +113,22 @@ export const memberPlaceInterestAdd = defineHandler(
         [memberId, input.placeId, input.scopeKind],
       )
 
+      // T103 — derive members.home_metro_id from the new primary_home Place's
+      // centroid (resolve_home_metro returns null when the centroid is null or
+      // falls outside every seeded CSA — rural fallback). Locality is set here,
+      // not via the spec's `member.locality.set` / home_location_id path, which
+      // does not exist — see DEVIATIONS.md / SPEC-PATCHES.md.
+      if (input.scopeKind === 'primary_home') {
+        await client.query(
+          `update public.members m
+              set home_metro_id = public.resolve_home_metro(p.centroid)
+             from public.places p
+            where m.id = $1
+              and p.id = $2`,
+          [memberId, input.placeId],
+        )
+      }
+
       if (demotedPlaceId) {
         await appendEvent(txCtx, 'member_events', {
           member_id: memberId,
