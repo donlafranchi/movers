@@ -22,7 +22,8 @@ vi.mock('@/actions', async (importActual) => {
   return { ...actual, memberSavedSearchCreate: create, memberSavedSearchRemove: remove }
 })
 
-import { followVenueAction, unfollowVenueAction, buildVenueFollowLabel } from './saved-search-actions'
+import { followVenueAction, unfollowVenueAction } from './saved-search-actions'
+import { buildVenueFollowLabel } from '@/lib/saved-search/venue-follow-label'
 
 const MEMBER = '11111111-1111-1111-1111-111111111111'
 const LOC = '22222222-2222-2222-2222-222222222222'

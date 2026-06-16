@@ -12,14 +12,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { resolveActionContext } from '@/lib/action-context'
 import { memberSavedSearchCreate, memberSavedSearchRemove, ActionError } from '@/actions'
-
-const LABEL_MAX = 80
-
-// Default label derived from the venue's name, truncated to the label CHECK
-// ceiling (member.md § Saved searches). Private to the owner; editable at b2.
-export function buildVenueFollowLabel(venueName: string): string {
-  return `Following ${venueName}`.slice(0, LABEL_MAX)
-}
+import { buildVenueFollowLabel } from '@/lib/saved-search/venue-follow-label'
 
 async function requireMemberId(): Promise<string> {
   const supabase = await createClient()
