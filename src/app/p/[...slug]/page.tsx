@@ -45,6 +45,13 @@ import {
   nextOccurrence,
 } from '@/lib/items/resolve-gathering'
 import { GatheringPublicPage } from '@/components/item/GatheringPublicPage'
+import {
+  splitLocationSlug,
+  resolveVenue,
+  venueDistanceMeters,
+  existingVenueSavedSearchId,
+} from '@/lib/locations/resolve-venue'
+import { VenuePublicPage } from '@/components/venue/VenuePublicPage'
 
 /** Human-readable next-occurrence date for a gathering (real clock). */
 function gatheringOccurrenceLabel(
@@ -127,6 +134,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description:
         gathering.description ||
         `${gathering.title}${gathering.brandLabel ? ` at ${gathering.brandLabel}` : ''}.`,
+    }
+  }
+
+  // Venue (Location) page — /p/[…place]/l/[slug]. Like the Group dispatch, folds
+  // into this catch-all (T060 DEVIATION). The `/l/` marker distinguishes it from
+  // the `/g/` Group split and the bare place path.
+  const locationSplit = splitLocationSlug(slug)
+  if (locationSplit) {
+    const venue = await resolveVenue(supabase, locationSplit.locationSlug)
+    if (!venue) {
+      return { title: 'Not found — Movers, Makers & Shakers' }
+    }
+    return {
+      title: `${venue.label} — Movers, Makers & Shakers`,
+      description:
+        venue.description || `${venue.label} — a venue on Movers, Makers & Shakers.`,
     }
   }
 
@@ -230,6 +253,42 @@ export default async function PlacePage({ params }: Props) {
         )}
         shareUrl={shareUrl}
         isOwner={isOwner}
+      />
+    )
+  }
+
+  // Venue (Location) page dispatch — /p/[…place]/l/[slug]. RLS
+  // (locations_public_read) is the visibility gate: a private or soft-deleted
+  // Location yields no row → 404 to non-owners.
+  const locationSplit = splitLocationSlug(slug)
+  if (locationSplit) {
+    const venue = await resolveVenue(supabase, locationSplit.locationSlug)
+    if (!venue) {
+      notFound()
+    }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const loggedIn = Boolean(user)
+    // Anon viewers have no member_place_interests row and never follow, so both
+    // reads are owner-only — skip them entirely when logged out.
+    const [distanceMeters, existingSavedSearchId] = loggedIn
+      ? await Promise.all([
+          venueDistanceMeters(supabase, venue.locationId),
+          existingVenueSavedSearchId(supabase, venue.locationId),
+        ])
+      : [null, null]
+    const venuePath = `/p/${slug.join('/')}`
+    const hostHref = loggedIn
+      ? `/you/sell?compose=gathering&location=${venue.locationId}`
+      : `/auth/login?next=${encodeURIComponent(`${venuePath}?action=host`)}`
+    return (
+      <VenuePublicPage
+        venue={venue}
+        loggedIn={loggedIn}
+        existingSavedSearchId={existingSavedSearchId}
+        distanceMeters={distanceMeters}
+        hostHref={hostHref}
       />
     )
   }
