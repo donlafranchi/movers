@@ -11,6 +11,8 @@
 // T105.
 
 import type { ResolvedVenue, LocationKind } from '@/lib/locations/resolve-venue'
+import type { FeedItem } from '@/lib/feed/locality-feed'
+import { ItemFeedCard } from '@/components/feed/ItemFeedCard'
 import { FollowVenueButton } from './FollowVenueButton'
 
 interface Props {
@@ -22,6 +24,12 @@ interface Props {
   distanceMeters: number | null
   /** Auth-aware target for "Host something here" (composer, or sign-in for anon). */
   hostHref: string
+  /** The venue's owning business Group, or null → minimal-page variant. */
+  owningGroupId: string | null
+  /** "What's happening here" — Items the owning Group hosts at this venue. */
+  hostedItems: FeedItem[]
+  /** "What's happening nearby" — public Items nearby, excluding the owning Group. */
+  nearbyItems: FeedItem[]
 }
 
 const KIND_LABELS: Record<LocationKind, string> = {
@@ -34,12 +42,25 @@ function milesLabel(meters: number): string {
   return `${(meters / 1609.344).toFixed(1)} mi away`
 }
 
+function ItemGrid({ items }: { items: FeedItem[] }) {
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+      {items.map((item) => (
+        <ItemFeedCard key={item.itemId} item={item} />
+      ))}
+    </div>
+  )
+}
+
 export function VenuePublicPage({
   venue,
   loggedIn,
   existingSavedSearchId,
   distanceMeters,
   hostHref,
+  owningGroupId,
+  hostedItems,
+  nearbyItems,
 }: Props) {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
@@ -87,8 +108,35 @@ export function VenuePublicPage({
         </a>
       </div>
 
-      {/* T105 — "What's happening here" / "What's happening nearby" sections
-          render here, between the CTAs and About. */}
+      {/* "What's happening here" — venue-hosted Items. Omitted entirely on the
+          minimal-page variant (no owning business Group to scope against). */}
+      {owningGroupId !== null && (
+        <section className="mt-8">
+          <h2 className="text-[22px] font-semibold">What&apos;s happening here</h2>
+          {hostedItems.length === 0 ? (
+            <p
+              data-testid="venue-here-empty"
+              aria-live="polite"
+              className="mt-3 rounded border border-dashed border-[--color-border] p-6 text-sm text-gray-500"
+            >
+              Nothing scheduled yet.
+            </p>
+          ) : (
+            <ItemGrid items={hostedItems} />
+          )}
+        </section>
+      )}
+
+      {/* "What's happening nearby" — collapsed-by-default secondary section.
+          Rendered only when there is something to show (no empty expandable). */}
+      {nearbyItems.length > 0 && (
+        <details data-testid="venue-nearby" className="mt-8">
+          <summary className="cursor-pointer text-[22px] font-semibold">
+            What&apos;s happening nearby
+          </summary>
+          <ItemGrid items={nearbyItems} />
+        </details>
+      )}
 
       <section data-testid="venue-about" className="mt-8">
         <h2 className="text-lg font-medium">About</h2>
