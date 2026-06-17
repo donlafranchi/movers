@@ -51,6 +51,11 @@ import {
   venueDistanceMeters,
   existingVenueSavedSearchId,
 } from '@/lib/locations/resolve-venue'
+import {
+  resolveOwningGroup,
+  getVenueHostedItems,
+  getVenueNearbyItems,
+} from '@/lib/locations/resolve-venue-items'
 import { VenuePublicPage } from '@/components/venue/VenuePublicPage'
 
 /** Human-readable next-occurrence date for a gathering (real clock). */
@@ -282,6 +287,13 @@ export default async function PlacePage({ params }: Props) {
     const hostHref = loggedIn
       ? `/you/sell?compose=gathering&location=${venue.locationId}`
       : `/auth/login?next=${encodeURIComponent(`${venuePath}?action=host`)}`
+    // Content sections (T105) — public, so they run for anon too. Owning Group
+    // scopes "What's happening here"; nearby excludes it.
+    const owningGroupId = await resolveOwningGroup(supabase, venue.locationId)
+    const [hostedItems, nearbyItems] = await Promise.all([
+      getVenueHostedItems(supabase, { locationId: venue.locationId, owningGroupId }),
+      getVenueNearbyItems(supabase, { locationId: venue.locationId, owningGroupId }),
+    ])
     return (
       <VenuePublicPage
         venue={venue}
@@ -289,6 +301,9 @@ export default async function PlacePage({ params }: Props) {
         existingSavedSearchId={existingSavedSearchId}
         distanceMeters={distanceMeters}
         hostHref={hostHref}
+        owningGroupId={owningGroupId}
+        hostedItems={hostedItems}
+        nearbyItems={nearbyItems}
       />
     )
   }
