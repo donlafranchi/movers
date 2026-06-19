@@ -10,6 +10,7 @@ import { MarketSelector } from '@/components/MarketSelector'
 import { VendorCard } from '@/components/VendorCard'
 import { RecruitmentGrid } from '@/components/RecruitmentGrid'
 import { SellCta } from '@/components/sell/SellCta'
+import { FollowingSummary } from '@/components/follows/FollowingSummary'
 
 type Tab = 'saved' | 'following' | 'settings'
 
@@ -205,6 +206,10 @@ function YouPageInner() {
           Change
         </button>
       </section>
+
+      {/* T108 — F042 unified "Following" summary (card scroll, new-schema follows:
+          Members / Groups / Venues). Self-omits when the Member follows nothing. */}
+      {userId && <FollowingSummary memberId={userId} />}
 
       <nav className="mt-6 flex gap-2" role="tablist" data-testid="you-tabs">
         {(['saved', 'following', 'settings'] as Tab[]).map((t) => {

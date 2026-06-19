@@ -50,6 +50,12 @@ export {
   memberSavedSearchRemoveInput,
   type MemberSavedSearchRemoveInput,
 } from './saved-search-remove'
+// T109 — Saved-search restore (F042 venue-follow Undo)
+export {
+  memberSavedSearchRestore,
+  memberSavedSearchRestoreInput,
+  type MemberSavedSearchRestoreInput,
+} from './saved-search-restore'
 
 // T075 — Business-jurisdiction handlers (Tier 0, self-attested)
 export {
