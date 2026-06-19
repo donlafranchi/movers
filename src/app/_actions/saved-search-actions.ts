@@ -11,7 +11,12 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { resolveActionContext } from '@/lib/action-context'
-import { memberSavedSearchCreate, memberSavedSearchRemove, ActionError } from '@/actions'
+import {
+  memberSavedSearchCreate,
+  memberSavedSearchRemove,
+  memberSavedSearchRestore,
+  ActionError,
+} from '@/actions'
 import { buildVenueFollowLabel } from '@/lib/saved-search/venue-follow-label'
 
 async function requireMemberId(): Promise<string> {
@@ -46,6 +51,22 @@ export async function unfollowVenueAction(input: {
   const ctx = resolveActionContext({ actingMemberId: memberId })
   try {
     await memberSavedSearchRemove(ctx, { id: input.savedSearchId })
+    return { ok: true }
+  } catch (err) {
+    if (err instanceof ActionError) throw new Error(err.message)
+    throw err
+  }
+}
+
+// T109 — F042 venue-follow Undo: re-activate the soft-removed saved-search row
+// rather than creating a duplicate.
+export async function restoreVenueAction(input: {
+  savedSearchId: string
+}): Promise<{ ok: true }> {
+  const memberId = await requireMemberId()
+  const ctx = resolveActionContext({ actingMemberId: memberId })
+  try {
+    await memberSavedSearchRestore(ctx, { id: input.savedSearchId })
     return { ok: true }
   } catch (err) {
     if (err instanceof ActionError) throw new Error(err.message)

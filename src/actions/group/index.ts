@@ -17,3 +17,16 @@ export {
   type GroupActivateInput,
   type GroupActivateResult,
 } from './activate'
+// T109 — Membership join / leave (F042 management page + Undo)
+export {
+  groupMemberLeave,
+  groupMemberLeaveInput,
+  type GroupMemberLeaveInput,
+  type GroupMemberLeaveResult,
+} from './member-leave'
+export {
+  groupMemberJoin,
+  groupMemberJoinInput,
+  type GroupMemberJoinInput,
+  type GroupMemberJoinResult,
+} from './member-join'

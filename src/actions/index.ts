@@ -14,8 +14,16 @@ import {
   memberInterestsAdd,
   memberFollow,
   memberUnfollow,
+  memberSavedSearchRemove,
+  memberSavedSearchRestore,
 } from './member'
-import { groupCreate, groupUpdateDraft, groupActivate } from './group'
+import {
+  groupCreate,
+  groupUpdateDraft,
+  groupActivate,
+  groupMemberJoin,
+  groupMemberLeave,
+} from './group'
 import { itemCreate, itemPublish, itemAttachLocation, itemQrCardRequest } from './item'
 import type { NamedActionHandler } from './_lib/handler'
 
@@ -35,6 +43,11 @@ const REGISTRY: Record<string, NamedActionHandler<unknown, unknown>> = {
   'member.interests.add': memberInterestsAdd as unknown as NamedActionHandler<unknown, unknown>,
   'member.follow': memberFollow as unknown as NamedActionHandler<unknown, unknown>,
   'member.unfollow': memberUnfollow as unknown as NamedActionHandler<unknown, unknown>,
+  // T109 — F042 management-page write paths (venue unfollow/restore + group leave/join)
+  'member.saved_search.remove': memberSavedSearchRemove as unknown as NamedActionHandler<unknown, unknown>,
+  'member.saved_search.restore': memberSavedSearchRestore as unknown as NamedActionHandler<unknown, unknown>,
+  'group.member_leave': groupMemberLeave as unknown as NamedActionHandler<unknown, unknown>,
+  'group.member_join': groupMemberJoin as unknown as NamedActionHandler<unknown, unknown>,
 }
 
 export function getHandler(name: string): NamedActionHandler<unknown, unknown> | null {
@@ -56,8 +69,9 @@ export {
   memberBusinessJurisdictionRemove,
   memberSavedSearchCreate,
   memberSavedSearchRemove,
+  memberSavedSearchRestore,
 } from './member'
-export { groupCreate, groupUpdateDraft, groupActivate } from './group'
+export { groupCreate, groupUpdateDraft, groupActivate, groupMemberJoin, groupMemberLeave } from './group'
 export { itemCreate, itemPublish, itemAttachLocation, itemQrCardRequest } from './item'
 export {
   ActionError,
