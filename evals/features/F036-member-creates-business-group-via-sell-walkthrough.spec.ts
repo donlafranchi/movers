@@ -317,8 +317,13 @@ test.describe("F036 — Maya creates a business Group through the Sell walkthrou
       // step is skipped. F037 owns the badge lifecycle; F036 must NOT surface the
       // badge as a side effect of Group creation. Surfacing one here would mean the
       // badge condition (Tier 0 row exists OR proximity-true) has been weakened.
+      // Assert the badge ELEMENT (data-testid="local-owner-badge" in ShopPublicPage,
+      // gated on `badge !== null`), not free text — F037's owner-only claim widget
+      // (LocallyOwnedClaim, data-testid="claim-widget") legitimately renders the
+      // heading "Locally Owned claim" + empty-state copy on the same page, so a
+      // free-text matcher collides with the claim prompt that is supposed to show.
       await expect(
-        page.getByText(/Locally Owned|Claimed local owner/i)
+        page.getByTestId("local-owner-badge")
       ).toHaveCount(0);
 
       // Forward-dep (F037) — return path to the locality claim via Group settings.
